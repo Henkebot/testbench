@@ -40,6 +40,8 @@ public:
 private:
 	SDL_Window* m_pWindow;
 
+	FLOAT m_fClearColor[4];
+
 	Microsoft::WRL::ComPtr<ID3D12Device> m_cDevice;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cCommandQueue;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_cCommandList;

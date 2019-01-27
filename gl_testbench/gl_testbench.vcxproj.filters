@@ -91,6 +91,9 @@
       <Filter>Source Files\OpenGL</Filter>
     </ClCompile>
     <ClCompile Include="DirectX12\DX12Renderer.cpp">
+      <Filter>Source Files\DirectX12</Filter>
+    </ClCompile>
+    <ClCompile Include="DirectX12\MaterialDX12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -174,6 +177,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DirectX12\DX12Common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectX12\MaterialDX12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

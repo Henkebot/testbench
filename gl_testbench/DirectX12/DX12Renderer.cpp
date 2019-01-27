@@ -1,4 +1,6 @@
 #include "DX12Renderer.h"
+#include "MaterialDX12.h"
+
 using namespace Microsoft::WRL;
 ////////////////////////////////////////////////////
 int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
@@ -135,7 +137,10 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 }
 
 ////////////////////////////////////////////////////
-void DX12Renderer::setWinTitle(const char* _title) {}
+void DX12Renderer::setWinTitle(const char* _title)
+{
+	SDL_SetWindowTitle(m_pWindow, _title);
+}
 
 ////////////////////////////////////////////////////
 void DX12Renderer::present()
@@ -176,7 +181,13 @@ int DX12Renderer::shutdown()
 }
 
 ////////////////////////////////////////////////////
-void DX12Renderer::setClearColor(float _r, float _g, float _b, float _a) {}
+void DX12Renderer::setClearColor(float _r, float _g, float _b, float _a)
+{
+	m_fClearColor[0] = _r;
+	m_fClearColor[1] = _g;
+	m_fClearColor[2] = _b;
+	m_fClearColor[3] = _a;
+}
 
 ////////////////////////////////////////////////////
 void DX12Renderer::clearBuffer(unsigned int _mask) {}
@@ -216,8 +227,7 @@ void DX12Renderer::frame()
 
 	m_cCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-	const FLOAT clearColor[3] = {0.142f, 0.142f, 0.142f};
-	m_cCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	m_cCommandList->ClearRenderTargetView(rtvHandle, m_fClearColor, 0, nullptr);
 
 	// Render stuff here
 
@@ -259,7 +269,7 @@ IDXGIAdapter1* DX12Renderer::_getHardwareAdapter(IDXGIFactory2* _pFactory) const
 ////////////////////////////////////////////////////
 Material* DX12Renderer::makeMaterial(const std::string& _name)
 {
-	return nullptr;
+	return new MaterialDX12();
 }
 
 ////////////////////////////////////////////////////
@@ -295,13 +305,13 @@ RenderState* DX12Renderer::makeRenderState()
 ////////////////////////////////////////////////////
 std::string DX12Renderer::getShaderPath()
 {
-	return std::string();
+	return "../assets/DX12/";
 }
 
 ////////////////////////////////////////////////////
 std::string DX12Renderer::getShaderExtension()
 {
-	return std::string();
+	return ".hlsl";
 }
 
 ////////////////////////////////////////////////////
