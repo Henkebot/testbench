@@ -28,7 +28,7 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 
 	// Create device
 	{
-		ComPtr<IDXGIAdapter1> adapter(_getHardwareAdapter(dxgiFactory.Get()));
+		ComPtr<IDXGIAdapter1> adapter = _getHardwareAdapter(dxgiFactory.Get());
 
 		ThrowIfFailed(
 			D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_cDevice)));
@@ -67,12 +67,8 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 		// so we create one with swapchain1 and transfer the
 		// result to swapchain3
 		ComPtr<IDXGISwapChain1> tempSwapChain;
-		ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(m_cCommandQueue.Get(),
-														  windowHandle,
-														  &swapChainDesc,
-														  nullptr,
-														  nullptr,
-														  &tempSwapChain));
+		ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(
+			m_cCommandQueue.Get(), windowHandle, &swapChainDesc, nullptr, nullptr, &tempSwapChain));
 
 		// Remove ALT+Enter resizing
 		ThrowIfFailed(dxgiFactory->MakeWindowAssociation(windowHandle, DXGI_MWA_NO_ALT_ENTER));
@@ -87,7 +83,54 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 		rtvHeapDesc.NumDescriptors = FRAME_COUNT;
 		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+		ThrowIfFailed(m_cDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_cRTVHeap)));
+
+		m_RTVDescriptorSize =
+			m_cDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_cRTVHeap->GetCPUDescriptorHandleForHeapStart());
+		// Create a RTV for each frame
+		for(UINT i = 0; i < FRAME_COUNT; i++)
+		{
+			ThrowIfFailed(m_cSwapChain->GetBuffer(i, IID_PPV_ARGS(&m_cRenderTarget[i])));
+			m_cDevice->CreateRenderTargetView(m_cRenderTarget[i].Get(), nullptr, rtvHandle);
+			rtvHandle.Offset(m_RTVDescriptorSize);
+		}
 	}
+
+	// Create command allocators for each frame
+	{
+		for(int i = 0; i < FRAME_COUNT; i++)
+		{
+			ThrowIfFailed(m_cDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+															IID_PPV_ARGS(&m_cCommandAllocator[i])));
+		}
+	}
+
+	// Create sunchronization objects
+	{
+		ThrowIfFailed(m_cDevice->CreateFence(
+			m_FenceValues[m_FrameIndex], D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_cFence)));
+
+		// Increment the value, we are expected the next frame
+		m_FenceValues[m_FrameIndex]++;
+
+		m_FenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		if(nullptr == m_FenceEvent)
+		{
+			// Failed to createEvent
+			return 1;
+		}
+	}
+
+	// Create a dummy commandlist
+	ThrowIfFailed(m_cDevice->CreateCommandList(0,
+											   D3D12_COMMAND_LIST_TYPE_DIRECT,
+											   m_cCommandAllocator[m_FrameIndex].Get(),
+											   nullptr,
+											   IID_PPV_ARGS(&m_cCommandList)));
+	ThrowIfFailed(m_cCommandList->Close());
 	return 0;
 }
 
@@ -95,7 +138,36 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 void DX12Renderer::setWinTitle(const char* _title) {}
 
 ////////////////////////////////////////////////////
-void DX12Renderer::present() {}
+void DX12Renderer::present()
+{
+	// Execute the command list.
+	ID3D12CommandList* ppCommandLists[] = {m_cCommandList.Get()};
+	m_cCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+	ThrowIfFailed(m_cSwapChain->Present(1, 0));
+
+	// Move to next frame
+	{
+		// Schedule a signal command in the queue.
+		const UINT64 currentFenceValue = m_FenceValues[m_FrameIndex];
+		ThrowIfFailed(m_cCommandQueue->Signal(m_cFence.Get(), currentFenceValue));
+
+		// Update the frame index
+		m_FrameIndex = m_cSwapChain->GetCurrentBackBufferIndex();
+
+		// If the next frame is not ready to be rendered yet, wait until it is ready.
+		if(m_cFence->GetCompletedValue() < m_FenceValues[m_FrameIndex])
+		{
+			ThrowIfFailed(
+				m_cFence->SetEventOnCompletion(m_FenceValues[m_FrameIndex], m_FenceEvent));
+
+			WaitForSingleObjectEx(m_FenceEvent, INFINITE, FALSE);
+		}
+
+		// Set the fence value for the next frame.
+		m_FenceValues[m_FrameIndex] = currentFenceValue + 1;
+	}
+}
 
 ////////////////////////////////////////////////////
 int DX12Renderer::shutdown()
@@ -116,7 +188,48 @@ void DX12Renderer::setRenderState(RenderState* _renderState) {}
 void DX12Renderer::submit(Mesh* _mesh) {}
 
 ////////////////////////////////////////////////////
-void DX12Renderer::frame() {}
+void DX12Renderer::frame()
+{
+	/*	Command list allocators can only be reset when the associated
+	command lists have finished execution on the GPU;  apps should
+	use fences to determine GPU execution progress.
+*/
+	ThrowIfFailed(m_cCommandAllocator[m_FrameIndex]->Reset());
+
+	/*
+	However when ExecuteCommandList() is called on a particular command
+	list, that command list can then be reset at any time and must be
+	before re-recording
+	*/
+
+	ThrowIfFailed(m_cCommandList->Reset(m_cCommandAllocator[m_FrameIndex].Get(), nullptr));
+
+	// Indicate that the backbuffer will be used as a render target.
+	m_cCommandList->ResourceBarrier(
+		1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(m_cRenderTarget[m_FrameIndex].Get(),
+											  D3D12_RESOURCE_STATE_PRESENT,
+											  D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(
+		m_cRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_FrameIndex, m_RTVDescriptorSize);
+
+	m_cCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+	const FLOAT clearColor[3] = {0.142f, 0.142f, 0.142f};
+	m_cCommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+	// Render stuff here
+
+	// Indicate that the back buffer will now be used to present
+	m_cCommandList->ResourceBarrier(
+		1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(m_cRenderTarget[m_FrameIndex].Get(),
+											  D3D12_RESOURCE_STATE_RENDER_TARGET,
+											  D3D12_RESOURCE_STATE_PRESENT));
+
+	ThrowIfFailed(m_cCommandList->Close());
+}
 
 ////////////////////////////////////////////////////
 IDXGIAdapter1* DX12Renderer::_getHardwareAdapter(IDXGIFactory2* _pFactory) const

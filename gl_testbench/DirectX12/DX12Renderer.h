@@ -42,11 +42,20 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12Device> m_cDevice;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cCommandQueue;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_cCommandList;
 	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_cSwapChain;
 
 	static const UINT FRAME_COUNT = 2;
 
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cRTVHeap;
+	UINT m_RTVDescriptorSize;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_cRenderTarget[FRAME_COUNT];
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cCommandAllocator[FRAME_COUNT];
+
 	UINT m_FrameIndex;
+	UINT64 m_FenceValues[FRAME_COUNT];
+	HANDLE m_FenceEvent;
+	Microsoft::WRL::ComPtr<ID3D12Fence> m_cFence;
 
 private:
 	IDXGIAdapter1* _getHardwareAdapter(IDXGIFactory2* _pFactory) const;
