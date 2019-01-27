@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Renderer.h"
-
+#include "DX12Common.h"
 #include <SDL.h>
 
 #pragma comment(lib, "SDL2.lib")
@@ -39,4 +39,15 @@ public:
 
 private:
 	SDL_Window* m_pWindow;
+
+	Microsoft::WRL::ComPtr<ID3D12Device> m_cDevice;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cCommandQueue;
+	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_cSwapChain;
+
+	static const UINT FRAME_COUNT = 2;
+
+	UINT m_FrameIndex;
+
+private:
+	IDXGIAdapter1* _getHardwareAdapter(IDXGIFactory2* _pFactory) const;
 };

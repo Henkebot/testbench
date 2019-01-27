@@ -176,6 +176,8 @@
   <ItemGroup>
     <ClInclude Include="..\include\stb_image.h" />
     <ClInclude Include="ConstantBuffer.h" />
+    <ClInclude Include="DirectX12\DX12Common.h" />
+    <ClInclude Include="DirectX12\d3dx12.h" />
     <ClInclude Include="DirectX12\DX12Renderer.h" />
     <ClInclude Include="OpenGL\ConstantBufferGL.h" />
     <ClInclude Include="OpenGL\MaterialGL.h" />

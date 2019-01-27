@@ -170,6 +170,12 @@
     <ClInclude Include="DirectX12\DX12Renderer.h">
       <Filter>Source Files\DirectX12</Filter>
     </ClInclude>
+    <ClInclude Include="DirectX12\d3dx12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectX12\DX12Common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\assets\GL45\FragmentShader.glsl">
