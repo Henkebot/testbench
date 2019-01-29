@@ -25,6 +25,7 @@ public:
 	Technique* makeTechnique(Material* _material, RenderState* _renderState) override;
 
 	int initialize(unsigned int _width = 800, unsigned int _height = 600) override;
+	void CreateSDLWindow(unsigned int _width, unsigned int _height);
 	void setWinTitle(const char* _title) override;
 	void present() override;
 	int shutdown() override;
@@ -37,28 +38,34 @@ public:
 	void submit(Mesh* _mesh) override;
 	void frame() override;
 
-private:
-	SDL_Window* m_pWindow;
-
-	FLOAT m_fClearColor[4];
-
-	Microsoft::WRL::ComPtr<ID3D12Device> m_cDevice;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cCommandQueue;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_cCommandList;
-	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_cSwapChain;
-
-	static const UINT FRAME_COUNT = 2;
-
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cRTVHeap;
-	UINT m_RTVDescriptorSize;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_cRenderTarget[FRAME_COUNT];
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cCommandAllocator[FRAME_COUNT];
-
-	UINT m_FrameIndex;
-	UINT64 m_FenceValues[FRAME_COUNT];
-	HANDLE m_FenceEvent;
-	Microsoft::WRL::ComPtr<ID3D12Fence> m_cFence;
+	void CreateDevice();
 
 private:
-	IDXGIAdapter1* _getHardwareAdapter(IDXGIFactory2* _pFactory) const;
+	void CreateCommandInterface();
+	void CreateSwapChain(int _width = 0, int _height = 0);
+	void CreateFenceAndEvent();
+	void CreateRenderTargets();
+	void SetViewportAndScissorRect(int _width, int _height);
+
+private:
+	static const unsigned int m_NUM_BACK_BUFFERS = 2U;
+	SDL_Window* m_pWindow = nullptr;
+	ID3D12Device4* m_pDevice4 = nullptr;
+	ID3D12GraphicsCommandList3* m_pCommandList3 = nullptr;
+
+	ID3D12CommandQueue* m_pCommandQueue = nullptr;
+	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
+	IDXGISwapChain4* m_pSwapChain4 = nullptr;
+
+	ID3D12Fence1* m_pFence = nullptr;
+	int m_fenceValue = 0;
+	HANDLE m_EventHandle = nullptr;
+
+	ID3D12DescriptorHeap* m_pRenderTargetsHeap = nullptr;
+	UINT m_RenderTargetDescriptorSize = 0;
+
+	ID3D12Resource* m_pRenderTargets[m_NUM_BACK_BUFFERS];
+
+	D3D12_VIEWPORT m_Viewport;
+	D3D12_RECT m_ScissorRect;
 };

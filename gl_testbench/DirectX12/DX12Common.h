@@ -53,4 +53,15 @@ inline void ThrowIfFailed(HRESULT hr)
 #endif
 }
 
+template <class Interface>
+inline void SafeRelease(Interface** ppInterfaceToRelease)
+{
+	if(*ppInterfaceToRelease != NULL)
+	{
+		(*ppInterfaceToRelease)->Release();
+
+		(*ppInterfaceToRelease) = NULL;
+	}
+}
+
 #pragma endregion
