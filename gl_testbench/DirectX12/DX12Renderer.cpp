@@ -39,9 +39,9 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	// Command Queue
 	{
 		D3D12_COMMAND_QUEUE_DESC commandDesc;
-		commandDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+		commandDesc.Type	 = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		commandDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-		commandDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+		commandDesc.Flags	= D3D12_COMMAND_QUEUE_FLAG_NONE;
 		commandDesc.NodeMask = 0;
 
 		ThrowIfFailed(m_cDevice->CreateCommandQueue(&commandDesc, IID_PPV_ARGS(&m_cCommandQueue)));
@@ -50,17 +50,17 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	// SwapChain
 	{
 		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-		swapChainDesc.Width = _width;
-		swapChainDesc.Height = _height;
-		swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapChainDesc.Stereo = FALSE;
-		swapChainDesc.SampleDesc.Count = 1;
-		swapChainDesc.SampleDesc.Quality = 0;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.BufferCount = FRAME_COUNT;
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-		swapChainDesc.Flags = 0;
+		swapChainDesc.Width					= _width;
+		swapChainDesc.Height				= _height;
+		swapChainDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDesc.Stereo				= FALSE;
+		swapChainDesc.SampleDesc.Count		= 1;
+		swapChainDesc.SampleDesc.Quality	= 0;
+		swapChainDesc.BufferUsage			= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount			= FRAME_COUNT;
+		swapChainDesc.SwapEffect			= DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+		swapChainDesc.AlphaMode				= DXGI_ALPHA_MODE_UNSPECIFIED;
+		swapChainDesc.Flags					= 0;
 
 		HWND windowHandle = GetActiveWindow();
 
@@ -82,9 +82,9 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	// Create render targets
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-		rtvHeapDesc.NumDescriptors = FRAME_COUNT;
-		rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		rtvHeapDesc.NumDescriptors			   = FRAME_COUNT;
+		rtvHeapDesc.Type					   = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		rtvHeapDesc.Flags					   = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
 		ThrowIfFailed(m_cDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_cRTVHeap)));
 
@@ -252,7 +252,7 @@ IDXGIAdapter1* DX12Renderer::_getHardwareAdapter(IDXGIFactory2* _pFactory) const
 	{
 		DXGI_ADAPTER_DESC1 adaptDesc;
 		pAdapter->GetDesc1(&adaptDesc);
-		printf("%ls", adaptDesc.Description);
+		printf("%ls\n", adaptDesc.Description);
 		if(adaptDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
 			continue;
 

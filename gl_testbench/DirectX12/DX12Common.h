@@ -7,6 +7,7 @@
 #include <dxgi1_6.h>
 #include <dxgidebug.h>
 
+#pragma comment(lib, "D3DCompiler.lib")
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "DXGI.lib")
 

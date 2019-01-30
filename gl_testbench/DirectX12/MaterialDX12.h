@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../Material.h"
+#include "DX12Common.h"
+#include <vector>
 
 class DX12Renderer;
 
@@ -42,4 +44,13 @@ public:
 
 	// disable material
 	virtual void disable() override;
+
+private:
+	Microsoft::WRL::ComPtr<ID3DBlob> m_cCompiledCode[sizeof(ShaderType)];
+
+private:
+	LPCSTR _getEntryPoint(ShaderType _type);
+	LPCSTR _getTarget(ShaderType _type);
+	int compileShader(ShaderType _type);
+	std::vector<D3D_SHADER_MACRO> _getShaderDefines(ShaderType _type);
 };
