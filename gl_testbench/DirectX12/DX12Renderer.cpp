@@ -1,5 +1,9 @@
 #include "DX12Renderer.h"
+#include "ConstantBufferDX12.h"
 #include "MaterialDX12.h"
+#include "MeshDX12.h"
+#include "RenderStateDX12.h"
+#include "VertexBufferDX12.h"
 
 using namespace Microsoft::WRL;
 
@@ -20,8 +24,6 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 
 	WaitForGPU();
 
-
-	
 	return 0;
 }
 
@@ -38,10 +40,18 @@ void DX12Renderer::CreateSDLWindow(unsigned int _width, unsigned int _height)
 }
 
 ////////////////////////////////////////////////////
-void DX12Renderer::setWinTitle(const char* _title) {}
+void DX12Renderer::setWinTitle(const char* _title)
+{
+	SDL_SetWindowTitle(m_pWindow, _title);
+}
 
 ////////////////////////////////////////////////////
-void DX12Renderer::present() {}
+void DX12Renderer::present()
+{
+	DXGI_PRESENT_PARAMETERS pp = {};
+	m_pSwapChain4->Present1(0, 0, &pp);
+	WaitForGPU();
+}
 
 ////////////////////////////////////////////////////
 int DX12Renderer::shutdown()
@@ -59,12 +69,80 @@ void DX12Renderer::clearBuffer(unsigned int _mask) {}
 void DX12Renderer::setRenderState(RenderState* _renderState) {}
 
 ////////////////////////////////////////////////////
-void DX12Renderer::submit(Mesh* _mesh) {}
+void DX12Renderer::submit(Mesh* _mesh)
+{
+	drawList2[_mesh->technique].push_back(_mesh);
+}
 
 ////////////////////////////////////////////////////
-void DX12Renderer::frame() 
+void DX12Renderer::frame()
 {
+	for(auto work : drawList2)
+	{
+		work.first->enable(this);
+		for(auto mesh : work.second)
+		{
+			size_t numberElements = mesh->geometryBuffers[0].numElements;
+			
+			for(auto t : mesh->textures)
+			{
+				// we do not really know here if the sampler has been
+				// defined in the shader.
+				t.second->bind(t.first);
+			}
+			for(auto element : mesh->geometryBuffers)
+			{
+				mesh->bindIAVertexBuffer(element.first);
+			}
+			mesh->txBuffer->bind(work.first->getMaterial());
+			
+		}
+	}
+	drawList2.clear();
+	/*Update();
+	UINT backBufferIndex = m_pSwapChain4->GetCurrentBackBufferIndex();
+	m_pCommandAllocator->Reset();
+	m_pCommandList3->Reset(m_pCommandAllocator, m_pPipeLineState);
 
+	ID3D12DescriptorHeap* descriptorHeaps[] = {m_pCBVHeap[backBufferIndex]};
+
+	m_pCommandList3->SetDescriptorHeaps(ARRAYSIZE(descriptorHeaps), descriptorHeaps);
+
+	m_pCommandList3->SetGraphicsRootSignature(m_pRootSignature);
+
+	m_pCommandList3->SetGraphicsRootDescriptorTable(
+		0, m_pCBVHeap[backBufferIndex]->GetGPUDescriptorHandleForHeapStart());
+
+	m_pCommandList3->RSSetViewports(1, &m_Viewport);
+	m_pCommandList3->RSSetScissorRects(1, &m_ScissorRect);
+
+	SetResourceTransitionBarrier(m_pCommandList3,
+								 m_pRenderTargets[backBufferIndex],
+								 D3D12_RESOURCE_STATE_PRESENT,
+								 D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cdh = m_pRenderTargetsHeap->GetCPUDescriptorHandleForHeapStart();
+	cdh.ptr += m_RenderTargetDescriptorSize * backBufferIndex;
+
+	m_pCommandList3->OMSetRenderTargets(1, &cdh, true, nullptr);
+
+	float clearColor[] = {0.2f, 0.2f, 0.2f, 1.0f};
+	m_pCommandList3->ClearRenderTargetView(cdh, clearColor, 0, nullptr);
+
+	m_pCommandList3->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_pCommandList3->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+
+	m_pCommandList3->DrawInstanced(3, 1, 0, 0);
+
+	SetResourceTransitionBarrier(m_pCommandList3,
+								 m_pRenderTargets[backBufferIndex],
+								 D3D12_RESOURCE_STATE_RENDER_TARGET,
+								 D3D12_RESOURCE_STATE_PRESENT);
+
+	m_pCommandList3->Close();
+
+	ID3D12CommandList* listsToExecute[] = {m_pCommandList3};
+	m_pCommandQueue->ExecuteCommandLists(ARRAYSIZE(listsToExecute), listsToExecute);*/
 }
 
 void DX12Renderer::CreateDevice()
@@ -140,7 +218,7 @@ void DX12Renderer::CreateSwapChain(int _width, int _height)
 	scDesc.SampleDesc.Count		 = 1;
 	scDesc.SampleDesc.Quality	= 0;
 	scDesc.BufferUsage			 = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	scDesc.BufferCount			 = m_NUM_BACK_BUFFERS;
+	scDesc.BufferCount			 = NUM_BACK_BUFFERS;
 	scDesc.Scaling				 = DXGI_SCALING_NONE;
 	scDesc.SwapEffect			 = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	scDesc.AlphaMode			 = DXGI_ALPHA_MODE_UNSPECIFIED;
@@ -166,7 +244,7 @@ void DX12Renderer::CreateFenceAndEvent()
 void DX12Renderer::CreateRenderTargets()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC dhd = {};
-	dhd.NumDescriptors			   = m_NUM_BACK_BUFFERS;
+	dhd.NumDescriptors			   = NUM_BACK_BUFFERS;
 	dhd.Type					   = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
 	ThrowIfFailed(m_pDevice4->CreateDescriptorHeap(&dhd, IID_PPV_ARGS(&m_pRenderTargetsHeap)));
@@ -175,7 +253,7 @@ void DX12Renderer::CreateRenderTargets()
 		m_pDevice4->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	D3D12_CPU_DESCRIPTOR_HANDLE cdh = m_pRenderTargetsHeap->GetCPUDescriptorHandleForHeapStart();
 
-	for(UINT i = 0; i < m_NUM_BACK_BUFFERS; i++)
+	for(UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 	{
 		ThrowIfFailed(m_pSwapChain4->GetBuffer(i, IID_PPV_ARGS(&m_pRenderTargets[i])));
 		m_pDevice4->CreateRenderTargetView(m_pRenderTargets[i], nullptr, cdh);
@@ -296,7 +374,7 @@ void DX12Renderer::CreateShadersAndPipeLineState()
 
 void DX12Renderer::CreateConstantBufferResources()
 {
-	for(int i = 0; i < m_NUM_BACK_BUFFERS; i++)
+	for(int i = 0; i < NUM_BACK_BUFFERS; i++)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDescriptorDesc = {};
 		heapDescriptorDesc.NumDescriptors			  = 1;
@@ -305,7 +383,7 @@ void DX12Renderer::CreateConstantBufferResources()
 		m_pDevice4->CreateDescriptorHeap(&heapDescriptorDesc, IID_PPV_ARGS(&m_pCBVHeap[i]));
 	}
 
-	UINT cbSizeAligned = (sizeof(ConstantBuffer) + 255) & ~255;
+	UINT cbSizeAligned = (sizeof(m_ConstantBuffer) + 255) & ~255;
 
 	D3D12_HEAP_PROPERTIES heapProperties = {};
 	heapProperties.Type					 = D3D12_HEAP_TYPE_UPLOAD;
@@ -323,7 +401,7 @@ void DX12Renderer::CreateConstantBufferResources()
 	resourceDesc.SampleDesc.Count	= 1;
 	resourceDesc.Layout				 = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	for(int i = 0; i < m_NUM_BACK_BUFFERS; i++)
+	for(int i = 0; i < NUM_BACK_BUFFERS; i++)
 	{
 		m_pDevice4->CreateCommittedResource(&heapProperties,
 											D3D12_HEAP_FLAG_NONE,
@@ -408,18 +486,60 @@ void DX12Renderer::CreateTriangleData()
 	m_VertexBufferView.SizeInBytes	= sizeof(triangleVertices);
 }
 
-void DX12Renderer::WaitForGPU() 
+void DX12Renderer::WaitForGPU()
 {
 	const UINT64 fence = m_fenceValue;
 	m_pCommandQueue->Signal(m_pFence, fence);
 
-	if (m_pFence->GetCompletedValue() < fence)
+	if(m_pFence->GetCompletedValue() < fence)
 	{
 		m_pFence->SetEventOnCompletion(fence, m_EventHandle);
 		WaitForSingleObject(m_EventHandle, INFINITE);
 	}
-	
+
 	m_fenceValue++;
+}
+
+void DX12Renderer::Update()
+{
+	//Update color values in constant buffer
+	for(int i = 0; i < 3; i++)
+	{
+		m_ConstantBufferCPU.colorChannel[i] += 0.0001f * (i + 1);
+		if(m_ConstantBufferCPU.colorChannel[i] > 1)
+		{
+			m_ConstantBufferCPU.colorChannel[i] = 0;
+		}
+	}
+
+	//Update GPU memory
+	void* mappedMem		  = nullptr;
+	D3D12_RANGE readRange = {0, 0}; //We do not intend to read this resource on the CPU.
+	if(SUCCEEDED(m_pConstantBufferResource[m_pSwapChain4->GetCurrentBackBufferIndex()]->Map(
+		   0, &readRange, &mappedMem)))
+	{
+		memcpy(mappedMem, &m_ConstantBufferCPU, sizeof(m_ConstantBuffer));
+
+		D3D12_RANGE writeRange = {0, sizeof(m_ConstantBuffer)};
+		m_pConstantBufferResource[m_pSwapChain4->GetCurrentBackBufferIndex()]->Unmap(0,
+																					 &writeRange);
+	}
+}
+
+void DX12Renderer::SetResourceTransitionBarrier(ID3D12GraphicsCommandList* commandList,
+												ID3D12Resource* resource,
+												D3D12_RESOURCE_STATES StateBefore,
+												D3D12_RESOURCE_STATES StateAfter)
+{
+	D3D12_RESOURCE_BARRIER barrierDesc = {};
+
+	barrierDesc.Type				   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrierDesc.Transition.pResource   = resource;
+	barrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	barrierDesc.Transition.StateBefore = StateBefore;
+	barrierDesc.Transition.StateAfter  = StateAfter;
+
+	commandList->ResourceBarrier(1, &barrierDesc);
 }
 
 ////////////////////////////////////////////////////
@@ -431,13 +551,13 @@ Material* DX12Renderer::makeMaterial(const std::string& _name)
 ////////////////////////////////////////////////////
 Mesh* DX12Renderer::makeMesh()
 {
-	return nullptr;
+	return new MeshDX12();
 }
 
 ////////////////////////////////////////////////////
 VertexBuffer* DX12Renderer::makeVertexBuffer(size_t _size, VertexBuffer::DATA_USAGE _usage)
 {
-	return nullptr;
+	return new VertexBufferDX12(m_pDevice4, _size, _usage);
 }
 
 ////////////////////////////////////////////////////
@@ -455,29 +575,29 @@ Sampler2D* DX12Renderer::makeSampler2D()
 ////////////////////////////////////////////////////
 RenderState* DX12Renderer::makeRenderState()
 {
-	return nullptr;
+	return new RenderStateDX12();
 }
 
 ////////////////////////////////////////////////////
 std::string DX12Renderer::getShaderPath()
 {
-	return "";
+	return "..\\assets\\DX12\\";
 }
 
 ////////////////////////////////////////////////////
 std::string DX12Renderer::getShaderExtension()
 {
-	return "";
+	return ".hlsl";
 }
 
 ////////////////////////////////////////////////////
 ConstantBuffer* DX12Renderer::makeConstantBuffer(std::string _name, unsigned int _location)
 {
-	return nullptr;
+	return new ConstantBufferDX12(m_pDevice4, _name, _location);
 }
 
 ////////////////////////////////////////////////////
 Technique* DX12Renderer::makeTechnique(Material* _material, RenderState* _renderState)
 {
-	return nullptr;
+	return new Technique(_material, _renderState);
 }

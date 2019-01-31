@@ -37,20 +37,20 @@ double gLastDelta = 0.0;
 void updateDelta()
 {
 #define WINDOW_SIZE 10
-	static Uint64 start = 0;
-	static Uint64 last = 0;
+	static Uint64 start			   = 0;
+	static Uint64 last			   = 0;
 	static double avg[WINDOW_SIZE] = {0.0};
-	static double lastSum = 10.0;
-	static int loop = 0;
+	static double lastSum		   = 10.0;
+	static int loop				   = 0;
 
-	last = start;
-	start = SDL_GetPerformanceCounter();
+	last			 = start;
+	start			 = SDL_GetPerformanceCounter();
 	double deltaTime = (double)((start - last) * 1000.0 / SDL_GetPerformanceFrequency());
 	// moving average window of WINDOWS_SIZE
 	lastSum -= avg[loop];
 	lastSum += deltaTime;
-	avg[loop] = deltaTime;
-	loop = (loop + 1) % WINDOW_SIZE;
+	avg[loop]  = deltaTime;
+	loop	   = (loop + 1) % WINDOW_SIZE;
 	gLastDelta = (lastSum / WINDOW_SIZE);
 };
 
@@ -98,7 +98,7 @@ void run()
 			if(windowEvent.type == SDL_KEYUP && windowEvent.key.keysym.sym == SDLK_ESCAPE)
 				break;
 		}
-		updateScene();
+		//updateScene();
 		renderScene();
 	}
 }
@@ -113,7 +113,7 @@ void updateScene()
 	*/
 	{
 		static long long shift = 0;
-		const int size = scene.size();
+		const int size		   = scene.size();
 		for(int i = 0; i < size; i++)
 		{
 			const float4 trans{xt[(int)(float)(i + shift) % (TOTAL_PLACES)],
@@ -147,9 +147,9 @@ int initialiseTestbench()
 {
 	std::string definePos = "#define POSITION " + std::to_string(POSITION) + "\n";
 	std::string defineNor = "#define NORMAL " + std::to_string(NORMAL) + "\n";
-	std::string defineUV = "#define TEXTCOORD " + std::to_string(TEXTCOORD) + "\n";
+	std::string defineUV  = "#define TEXTCOORD " + std::to_string(TEXTCOORD) + "\n";
 
-	std::string defineTX = "#define TRANSLATION " + std::to_string(TRANSLATION) + "\n";
+	std::string defineTX	 = "#define TRANSLATION " + std::to_string(TRANSLATION) + "\n";
 	std::string defineTXName = "#define TRANSLATION_NAME " + std::string(TRANSLATION_NAME) + "\n";
 
 	std::string defineDiffCol = "#define DIFFUSE_TINT " + std::to_string(DIFFUSE_TINT) + "\n";
@@ -185,7 +185,7 @@ int initialiseTestbench()
 	};
 
 	float degToRad = M_PI / 180.0;
-	float scale = (float)TOTAL_PLACES / 359.9;
+	float scale	= (float)TOTAL_PLACES / 359.9;
 	for(int a = 0; a < TOTAL_PLACES; a++)
 	{
 		xt[a] = 0.8f * cosf(degToRad * ((float)a / scale) * 3.0);
@@ -200,9 +200,9 @@ int initialiseTestbench()
 	float2 triUV[3] = {{0.5f, -0.99f}, {1.49f, 1.1f}, {-0.51, 1.1f}};
 
 	// load Materials.
-	std::string shaderPath = renderer->getShaderPath();
+	std::string shaderPath		= renderer->getShaderPath();
 	std::string shaderExtension = renderer->getShaderExtension();
-	float diffuse[4][4] = {
+	float diffuse[4][4]			= {
 		0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0};
 
 	for(int i = 0; i < materialDefs.size(); i++)
@@ -238,15 +238,15 @@ int initialiseTestbench()
 	techniques.push_back(renderer->makeTechnique(materials[2], renderer->makeRenderState()));
 	techniques.push_back(renderer->makeTechnique(materials[3], renderer->makeRenderState()));
 
-	// create texture
-	Texture2D* fatboy = renderer->makeTexture2D();
-	fatboy->loadFromFile("../assets/textures/fatboy.png");
-	Sampler2D* sampler = renderer->makeSampler2D();
-	sampler->setWrap(WRAPPING::REPEAT, WRAPPING::REPEAT);
-	fatboy->sampler = sampler;
+	//// create texture
+	//Texture2D* fatboy = renderer->makeTexture2D();
+	//fatboy->loadFromFile("../assets/textures/fatboy.png");
+	//Sampler2D* sampler = renderer->makeSampler2D();
+	//sampler->setWrap(WRAPPING::REPEAT, WRAPPING::REPEAT);
+	//fatboy->sampler = sampler;
 
-	textures.push_back(fatboy);
-	samplers.push_back(sampler);
+	//textures.push_back(fatboy);
+	//samplers.push_back(sampler);
 
 	// pre-allocate one single vertex buffer for ALL triangles
 	pos = renderer->makeVertexBuffer(TOTAL_TRIS * sizeof(triPos), VertexBuffer::DATA_USAGE::STATIC);
@@ -260,17 +260,17 @@ int initialiseTestbench()
 		Mesh* m = renderer->makeMesh();
 
 		constexpr auto numberOfPosElements = std::extent<decltype(triPos)>::value;
-		size_t offset = i * sizeof(triPos);
+		size_t offset					   = i * sizeof(triPos);
 		pos->setData(triPos, sizeof(triPos), offset);
 		m->addIAVertexBufferBinding(pos, offset, numberOfPosElements, sizeof(float4), POSITION);
 
 		constexpr auto numberOfNorElements = std::extent<decltype(triNor)>::value;
-		offset = i * sizeof(triNor);
+		offset							   = i * sizeof(triNor);
 		nor->setData(triNor, sizeof(triNor), offset);
 		m->addIAVertexBufferBinding(nor, offset, numberOfNorElements, sizeof(float4), NORMAL);
 
 		constexpr auto numberOfUVElements = std::extent<decltype(triUV)>::value;
-		offset = i * sizeof(triUV);
+		offset							  = i * sizeof(triUV);
 		uvs->setData(triUV, sizeof(triUV), offset);
 		m->addIAVertexBufferBinding(uvs, offset, numberOfUVElements, sizeof(float2), TEXTCOORD);
 
@@ -278,8 +278,8 @@ int initialiseTestbench()
 		m->txBuffer = renderer->makeConstantBuffer(std::string(TRANSLATION_NAME), TRANSLATION);
 
 		m->technique = techniques[i % 4];
-		if(i % 4 == 2)
-			m->addTexture(textures[0], DIFFUSE_SLOT);
+		/*if(i % 4 == 2)
+			m->addTexture(textures[0], DIFFUSE_SLOT);*/
 
 		scene.push_back(m);
 	}

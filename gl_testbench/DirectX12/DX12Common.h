@@ -9,12 +9,14 @@
 
 #pragma comment(lib, "D3d12.lib")
 #pragma comment(lib, "DXGI.lib")
-
+#pragma comment(lib, "D3DCompiler.lib")
 // Comptr
 #include <wrl.h>
 
 // other
 #include <string>
+
+static const unsigned int NUM_BACK_BUFFERS = 2U;
 
 #pragma region HR Thrower
 

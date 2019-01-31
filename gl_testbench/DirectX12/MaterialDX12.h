@@ -1,13 +1,16 @@
 #pragma once
 
 #include "../Material.h"
+#include "DX12Common.h"
 
+class ConstantBufferDX12;
 class DX12Renderer;
 
 class MaterialDX12 : public Material
 {
+	friend class ConstantBufferDX12;
 public:
-	MaterialDX12();
+	MaterialDX12(ID3D12Device4* _device);
 	~MaterialDX12() = default;
 
 	// set shader name, DOES NOT COMPILE
@@ -42,4 +45,19 @@ public:
 
 	// disable material
 	virtual void disable() override;
+
+private:
+	// DX12Renderer handles this pointer
+	ID3D12Device4* m_pDevice; 
+
+	ID3DBlob* m_pVertexBlob;
+	ID3DBlob* m_pPixelBlob;
+
+	std::map<unsigned int, ConstantBufferDX12*> constantBuffers;
+
+private:
+	void _compileShader(ShaderType _type);
+
+	LPCSTR _targetName(ShaderType _type);
+	LPCSTR _entryPoint(ShaderType _type);
 };

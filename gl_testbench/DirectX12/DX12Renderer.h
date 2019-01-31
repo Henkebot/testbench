@@ -2,7 +2,9 @@
 
 #include "../Renderer.h"
 #include "DX12Common.h"
+
 #include <SDL.h>
+#include <unordered_map>
 
 #pragma comment(lib, "SDL2.lib")
 #pragma comment(lib, "SDL2main.lib")
@@ -51,11 +53,12 @@ private:
 	void CreateConstantBufferResources();
 	void CreateTriangleData();
 	void WaitForGPU();
+	void Update();
+
 private:
-	static const unsigned int m_NUM_BACK_BUFFERS = 2U;
-	SDL_Window* m_pWindow						 = nullptr;
-	ID3D12Device4* m_pDevice4					 = nullptr;
-	ID3D12GraphicsCommandList3* m_pCommandList3  = nullptr;
+	SDL_Window* m_pWindow						= nullptr;
+	ID3D12Device4* m_pDevice4					= nullptr;
+	ID3D12GraphicsCommandList3* m_pCommandList3 = nullptr;
 
 	ID3D12CommandQueue* m_pCommandQueue			= nullptr;
 	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
@@ -68,7 +71,7 @@ private:
 	ID3D12DescriptorHeap* m_pRenderTargetsHeap = nullptr;
 	UINT m_RenderTargetDescriptorSize		   = 0;
 
-	ID3D12Resource* m_pRenderTargets[m_NUM_BACK_BUFFERS];
+	ID3D12Resource* m_pRenderTargets[NUM_BACK_BUFFERS];
 
 	D3D12_VIEWPORT m_Viewport;
 	D3D12_RECT m_ScissorRect;
@@ -76,10 +79,22 @@ private:
 	ID3D12RootSignature* m_pRootSignature = nullptr;
 	ID3D12PipelineState* m_pPipeLineState;
 
-	ID3D12DescriptorHeap* m_pCBVHeap[m_NUM_BACK_BUFFERS];
+	ID3D12DescriptorHeap* m_pCBVHeap[NUM_BACK_BUFFERS];
 
-	ID3D12Resource1* m_pConstantBufferResource[m_NUM_BACK_BUFFERS];
+	ID3D12Resource1* m_pConstantBufferResource[NUM_BACK_BUFFERS];
 	ID3D12Resource1* m_pVertexBufferResource = nullptr;
 
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+
+	struct m_ConstantBuffer
+	{
+		float colorChannel[4];
+	} m_ConstantBufferCPU;
+
+	void SetResourceTransitionBarrier(ID3D12GraphicsCommandList* commandList,
+									  ID3D12Resource* resource,
+									  D3D12_RESOURCE_STATES StateBefore,
+									  D3D12_RESOURCE_STATES StateAfter);
+
+	std::unordered_map<Technique*, std::vector<Mesh*>> drawList2;
 };

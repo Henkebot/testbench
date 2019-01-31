@@ -10,4 +10,3 @@ public:
 	// activate all options in this render state.
 	virtual void set() = 0;
 };
-
