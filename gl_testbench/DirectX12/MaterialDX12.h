@@ -4,12 +4,15 @@
 #include "DX12Common.h"
 #include <vector>
 
+class ConstantBufferDX12;
 class DX12Renderer;
 
 class MaterialDX12 : public Material
 {
+	friend class ConstantBufferDX12;
+
 public:
-	MaterialDX12();
+	MaterialDX12(ID3D12Device4* _device);
 	~MaterialDX12() = default;
 
 	// set shader name, DOES NOT COMPILE
@@ -45,12 +48,20 @@ public:
 	// disable material
 	virtual void disable() override;
 
-private:
-	Microsoft::WRL::ComPtr<ID3DBlob> m_cCompiledCode[sizeof(ShaderType)];
+public:
+	D3D12_SHADER_BYTECODE GetShaderByteDesc(ShaderType _type) const;
 
 private:
-	LPCSTR _getEntryPoint(ShaderType _type);
-	LPCSTR _getTarget(ShaderType _type);
-	int compileShader(ShaderType _type);
-	std::vector<D3D_SHADER_MACRO> _getShaderDefines(ShaderType _type);
+	// DX12Renderer handles this pointer
+	ID3D12Device4* m_pDevice;
+
+	ID3DBlob* m_pShaderBlobs[((unsigned long long)ShaderType::CS) + 1ULL];
+
+	std::map<unsigned int, ConstantBufferDX12*> constantBuffers;
+
+private:
+	void _compileShader(ShaderType _type);
+
+	LPCSTR _targetName(ShaderType _type);
+	LPCSTR _entryPoint(ShaderType _type);
 };

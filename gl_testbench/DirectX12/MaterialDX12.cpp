@@ -1,16 +1,19 @@
 #include "MaterialDX12.h"
+#include "ConstantBufferDX12.h"
 #include <fstream>
-#include <iostream> // Remove
 #include <sstream>
+#include <vector>
 
 ////////////////////////////////////////////////////
-MaterialDX12::MaterialDX12()
+MaterialDX12::MaterialDX12(ID3D12Device4* _device)
 	: Material()
+	, m_pDevice(_device)
 {}
 
 ////////////////////////////////////////////////////
 void MaterialDX12::setShader(const std::string& _shaderFileName, ShaderType _type)
 {
+
 	// If the shader was found
 	if(shaderFileNames.find(_type) != shaderFileNames.end())
 	{
@@ -28,63 +31,129 @@ void MaterialDX12::setDiffuse(Color _c) {}
 ////////////////////////////////////////////////////
 int MaterialDX12::compileMaterial(std::string& _errString)
 {
-	std::ifstream shaderFile(shaderFileNames[ShaderType::VS]);
-	std::string shaderText;
-	if(shaderFile.is_open())
-	{
-		shaderText = std::string((std::istreambuf_iterator<char>(shaderFile)),
-								 std::istreambuf_iterator<char>());
-		shaderFile.close();
-	}
-	else
-	{
-		_errString = "Cannot find file: " + shaderFileNames[ShaderType::VS];
-		return -1;
-	}
 
-	auto defines = _getShaderDefines(ShaderType::VS);
+	_compileShader(ShaderType::VS);
+	_compileShader(ShaderType::PS);
 
-	LPCVOID pSrcData				 = reinterpret_cast<LPCVOID>(shaderText.c_str());
-	SIZE_T SrcDataSize				 = shaderText.size();
-	LPCSTR pSourceName				 = nullptr;
-	const D3D_SHADER_MACRO* pDefines = (const D3D_SHADER_MACRO*)&defines[0];
-	ID3DInclude* pInclude			 = nullptr;
-	LPCSTR pEntrypoint				 = _getEntryPoint(_type);
-	LPCSTR pTarget					 = "vs_5_1";
-	UINT Flags1						 = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-	UINT Flags2						 = 0;
-	ID3DBlob** ppCode				 = &m_cCompiledCode[(int)ShaderType::VS];
-	ID3DBlob* ppErrorMsgs			 = nullptr;
-
-	if(FAILED(D3DCompile(pSrcData,
-						 SrcDataSize,
-						 pSourceName,
-						 pDefines,
-						 pInclude,
-						 pEntrypoint,
-						 pTarget,
-						 Flags1,
-						 Flags2,
-						 ppCode,
-						 &ppErrorMsgs)))
-	{
-		if(ppErrorMsgs)
-		{
-			OutputDebugStringA((char*)ppErrorMsgs->GetBufferPointer());
-			ppErrorMsgs->Release();
-		}
-
-		if(*ppCode)
-			(*ppCode)->Release();
-	}
 	return 0;
 }
 
 ////////////////////////////////////////////////////
-void MaterialDX12::addConstantBuffer(std::string name, unsigned int location) {}
+void MaterialDX12::_compileShader(ShaderType _type)
+{
+	std::vector<D3D_SHADER_MACRO> macros;
+	std::vector<std::string> Names;
+	std::vector<std::string> Values;
+
+	for(auto shaderDefine : shaderDefines[_type])
+	{
+		std::stringstream ss(shaderDefine);
+
+		while(ss.good())
+		{
+			std::string define, Name, Value;
+			ss >> define >> Name >> Value;
+
+			// If name is empty no need to continue
+			if(!strcmp(Name.c_str(), ""))
+				break;
+
+			Names.push_back(Name);
+			Values.push_back(Value);
+		}
+	}
+	for(int i = 0; i < Names.size(); i++)
+	{
+		D3D_SHADER_MACRO macro;
+		macro.Name		 = Names[i].c_str();
+		macro.Definition = Values[i].c_str();
+		macros.push_back(macro);
+	}
+
+	D3D_SHADER_MACRO end;
+	end.Name	   = NULL;
+	end.Definition = NULL;
+	macros.push_back(end);
+
+	std::string shaderCode;
+	{
+		std::ifstream shaderFile(shaderFileNames[_type]);
+		if(shaderFile.is_open())
+		{
+			shaderCode = std::string((std::istreambuf_iterator<char>(shaderFile)),
+									 std::istreambuf_iterator<char>());
+		}
+	}
+
+	LPCVOID pSrcData				 = (LPCVOID)shaderCode.data();
+	SIZE_T SrcDataSize				 = shaderCode.size();
+	LPCSTR pSourceName				 = shaderFileNames[_type].c_str();
+	CONST D3D_SHADER_MACRO* pDefines = (CONST D3D_SHADER_MACRO*)&macros[0];
+	ID3DInclude* pInclude			 = NULL;
+	LPCSTR pEntrypoint				 = _entryPoint(_type);
+	LPCSTR pTarget					 = _targetName(_type);
+	UINT Flags1						 = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+	UINT Flags2						 = 0;
+	ID3DBlob** ppCode				 = &m_pShaderBlobs[(unsigned long long)_type];
+	ID3DBlob* ppErrorMsgs			 = nullptr;
+
+	ThrowIfFailed(D3DCompile(pSrcData,
+							 SrcDataSize,
+							 pSourceName,
+							 pDefines,
+							 pInclude,
+							 pEntrypoint,
+							 pTarget,
+							 Flags1,
+							 Flags2,
+							 ppCode,
+							 &ppErrorMsgs));
+	if(ppErrorMsgs)
+	{
+		OutputDebugStringA((char*)ppErrorMsgs->GetBufferPointer());
+		ppErrorMsgs->Release();
+	}
+}
 
 ////////////////////////////////////////////////////
-void MaterialDX12::updateConstantBuffer(const void* data, size_t size, unsigned int location) {}
+LPCSTR MaterialDX12::_targetName(ShaderType _type)
+{
+	switch(_type)
+	{
+	case ShaderType::VS:
+		return "vs_5_0";
+	case ShaderType::PS:
+		return "ps_5_0";
+	default:
+		return nullptr;
+	}
+}
+
+////////////////////////////////////////////////////
+LPCSTR MaterialDX12::_entryPoint(ShaderType _type)
+{
+	switch(_type)
+	{
+	case ShaderType::VS:
+		return "VS_Main";
+	case ShaderType::PS:
+		return "PS_Main";
+	default:
+		return nullptr;
+	}
+}
+
+////////////////////////////////////////////////////
+void MaterialDX12::addConstantBuffer(std::string name, unsigned int location)
+{
+	constantBuffers[location] = new ConstantBufferDX12(m_pDevice, name, location);
+}
+
+////////////////////////////////////////////////////
+void MaterialDX12::updateConstantBuffer(const void* data, size_t size, unsigned int location)
+{
+	constantBuffers[location]->setData(data, size, this, location);
+}
 
 ////////////////////////////////////////////////////
 int MaterialDX12::enable()
@@ -95,110 +164,11 @@ int MaterialDX12::enable()
 ////////////////////////////////////////////////////
 void MaterialDX12::disable() {}
 
-LPCSTR MaterialDX12::_getEntryPoint(ShaderType _type)
+////////////////////////////////////////////////////
+D3D12_SHADER_BYTECODE MaterialDX12::GetShaderByteDesc(ShaderType _type) const
 {
-	switch(_type)
-	{
-	case ShaderType::VS:
-		return "VS_Main";
-	case ShaderType::PS:
-		return "PS_Main";
-	}
-	return "Invalid";
-}
-
-LPCSTR MaterialDX12::_getTarget(ShaderType _type)
-{
-	switch(_type)
-	{
-	case ShaderType::VS:
-		return "vs_5_0";
-	case ShaderType::PS:
-		return "ps_5_0";
-	}
-	return "Invalid";
-}
-
-int MaterialDX12::compileShader(ShaderType _type)
-{
-	std::string shaderText;
-	{
-		std::ifstream shaderFile(shaderFileNames[_type]);
-		// Failed to open shader file
-		if(false == shaderFile.is_open())
-			return 1;
-
-		shaderText = std::string((std::istreambuf_iterator<char>(shaderFile)),
-								 std::istreambuf_iterator<char>());
-	}
-
-	auto defines = _getShaderDefines(_type);
-
-	LPCVOID pSrcData				 = reinterpret_cast<LPCVOID>(shaderText.c_str());
-	SIZE_T SrcDataSize				 = shaderText.size();
-	LPCSTR pSourceName				 = nullptr;
-	const D3D_SHADER_MACRO* pDefines = (const D3D_SHADER_MACRO*)&defines[0];
-	ID3DInclude* pInclude			 = nullptr;
-	LPCSTR pEntrypoint				 = _getEntryPoint(_type);
-	LPCSTR pTarget					 = _getTarget(_type);
-	UINT Flags1						 = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-	UINT Flags2						 = 0;
-	ID3DBlob** ppCode				 = &m_cCompiledCode[(int)_type];
-	ID3DBlob* ppErrorMsgs			 = nullptr;
-
-	if(FAILED(D3DCompile(pSrcData,
-						 SrcDataSize,
-						 pSourceName,
-						 pDefines,
-						 pInclude,
-						 pEntrypoint,
-						 pTarget,
-						 Flags1,
-						 Flags2,
-						 ppCode,
-						 &ppErrorMsgs)))
-	{
-		if(ppErrorMsgs)
-		{
-			OutputDebugStringA((char*)ppErrorMsgs->GetBufferPointer());
-			ppErrorMsgs->Release();
-		}
-
-		if(*ppCode)
-			(*ppCode)->Release();
-	}
-	return 0;
-}
-
-std::vector<D3D_SHADER_MACRO> MaterialDX12::_getShaderDefines(ShaderType _type)
-{
-	//TODO(Henrik): I need to free the char's that i create in this function
-	std::vector<D3D_SHADER_MACRO> macros;
-	for(auto& def : shaderDefines[_type])
-	{
-		std::cout << def;
-		std::stringstream stream(def);
-		while(stream)
-		{
-			std::string define, name, definition;
-
-			stream >> define >> name >> definition;
-
-			if(strcmp(define.c_str(), "") == 0)
-				break;
-
-			D3D_SHADER_MACRO newMacro;
-
-			newMacro.Name = new char[name.size() + 1];
-			strcpy_s((char*)newMacro.Name, name.size() + 1, name.c_str());
-
-			newMacro.Definition = new char[definition.size() + 1];
-			strcpy_s((char*)newMacro.Definition, definition.size() + 1, definition.c_str());
-
-			macros.push_back(newMacro);
-		}
-	}
-	macros.push_back({});
-
-	return macros;
+	D3D12_SHADER_BYTECODE desc;
+	desc.pShaderBytecode = m_pShaderBlobs[(unsigned long long)_type]->GetBufferPointer();
+	desc.BytecodeLength  = m_pShaderBlobs[(unsigned long long)_type]->GetBufferSize();
+	return desc;
 }

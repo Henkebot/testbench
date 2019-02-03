@@ -47,6 +47,7 @@ AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: true
 BinPackArguments: false
 BinPackParameters: false
+AlignConsecutiveAssignments: true
 
 # Configure each individual brace in BraceWrapping
 BreakBeforeBraces: Custom

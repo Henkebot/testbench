@@ -2,15 +2,19 @@
 
 #include "../Renderer.h"
 #include "DX12Common.h"
+
 #include <SDL.h>
+#include <unordered_map>
 
 #pragma comment(lib, "SDL2.lib")
 #pragma comment(lib, "SDL2main.lib")
 
 class DX12Renderer : public Renderer
 {
+	friend class TechniqueDX12;
+
 public:
-	DX12Renderer() = default;
+	DX12Renderer()			= default;
 	virtual ~DX12Renderer() = default;
 
 	Material* makeMaterial(const std::string& _name) override;
@@ -37,28 +41,63 @@ public:
 	void submit(Mesh* _mesh) override;
 	void frame() override;
 
-private:
-	SDL_Window* m_pWindow;
-
-	FLOAT m_fClearColor[4];
-
-	Microsoft::WRL::ComPtr<ID3D12Device> m_cDevice;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_cCommandQueue;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_cCommandList;
-	Microsoft::WRL::ComPtr<IDXGISwapChain3> m_cSwapChain;
-
-	static const UINT FRAME_COUNT = 2;
-
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cRTVHeap;
-	UINT m_RTVDescriptorSize;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_cRenderTarget[FRAME_COUNT];
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_cCommandAllocator[FRAME_COUNT];
-
-	UINT m_FrameIndex;
-	UINT64 m_FenceValues[FRAME_COUNT];
-	HANDLE m_FenceEvent;
-	Microsoft::WRL::ComPtr<ID3D12Fence> m_cFence;
+	void CreateDevice();
 
 private:
-	IDXGIAdapter1* _getHardwareAdapter(IDXGIFactory2* _pFactory) const;
+	void CreateSDLWindow(unsigned int _width, unsigned int _height);
+	void CreateCommandInterface();
+	void CreateSwapChain(int _width = 0, int _height = 0);
+	void CreateFenceAndEvent();
+	void CreateRenderTargets();
+	void SetViewportAndScissorRect(int _width, int _height);
+	void CreateRootSignature();
+	void CreateShadersAndPipeLineState();
+	void CreateConstantBufferResources();
+	void CreateTriangleData();
+	void WaitForGPU();
+	void Update();
+
+private:
+	SDL_Window* m_pWindow						= nullptr;
+	ID3D12Device4* m_pDevice4					= nullptr;
+	ID3D12GraphicsCommandList3* m_pCommandList3 = nullptr;
+
+	ID3D12CommandQueue* m_pCommandQueue			= nullptr;
+	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
+	IDXGISwapChain4* m_pSwapChain4				= nullptr;
+
+	ID3D12Fence1* m_pFence = nullptr;
+	int m_fenceValue	   = 0;
+	UINT m_frameIndex	  = 0;
+	HANDLE m_EventHandle   = nullptr;
+
+	ID3D12DescriptorHeap* m_pRenderTargetsHeap = nullptr;
+	UINT m_RenderTargetDescriptorSize		   = 0;
+
+	ID3D12Resource* m_pRenderTargets[NUM_BACK_BUFFERS];
+
+	D3D12_VIEWPORT m_Viewport;
+	D3D12_RECT m_ScissorRect;
+
+	ID3D12RootSignature* m_pRootSignature = nullptr;
+	//ID3D12PipelineState* m_pPipeLineState;
+
+	ID3D12DescriptorHeap* m_pCBVHeap[NUM_BACK_BUFFERS];
+
+	ID3D12Resource1* m_pConstantBufferResource[NUM_BACK_BUFFERS];
+	ID3D12Resource1* m_pVertexBufferResource = nullptr;
+
+	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+
+	struct m_ConstantBuffer
+	{
+		float colorChannel[4];
+	} m_ConstantBufferCPU;
+
+	void SetResourceTransitionBarrier(ID3D12GraphicsCommandList* commandList,
+									  ID3D12Resource* resource,
+									  D3D12_RESOURCE_STATES StateBefore,
+									  D3D12_RESOURCE_STATES StateAfter);
+
+	std::unordered_map<Technique*, std::vector<Mesh*>> drawList2;
 };
