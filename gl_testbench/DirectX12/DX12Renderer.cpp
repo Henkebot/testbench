@@ -77,6 +77,7 @@ void DX12Renderer::setRenderState(RenderState* _renderState)
 ////////////////////////////////////////////////////
 void DX12Renderer::submit(Mesh* _mesh)
 {
+	WaitForGPU();
 	drawList2[_mesh->technique].push_back(_mesh);
 }
 
@@ -172,16 +173,21 @@ void DX12Renderer::frame()
 void DX12Renderer::CreateDevice()
 {
 	ComPtr<ID3D12Debug> debugController;
-
+	UINT dxgiFactoryFlags = 0;
 	if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 	{
 		debugController->EnableDebugLayer();
+		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 	}
+	ComPtr<ID3D12Debug1> debugcontroller1;
+	debugController->QueryInterface(IID_PPV_ARGS(&debugcontroller1));
+	debugcontroller1->SetEnableGPUBasedValidation(true);
 
-	IDXGIFactory2* factory = nullptr;
+
+	IDXGIFactory4* factory = nullptr;
 	IDXGIAdapter1* adapter = nullptr;
 
-	CreateDXGIFactory(IID_PPV_ARGS(&factory));
+	ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
 	//Loop through and find adapter
 	for(UINT adapterIndex = 0;
 		DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(adapterIndex, &adapter);
@@ -354,6 +360,7 @@ void DX12Renderer::CreateRootSignature()
 
 	ThrowIfFailed(m_pDevice4->CreateRootSignature(
 		0, sBlob->GetBufferPointer(), sBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature)));
+	m_pRootSignature->SetName(L"Main Root signature");
 }
 
 void DX12Renderer::CreateShadersAndPipeLineState()

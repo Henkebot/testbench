@@ -44,7 +44,7 @@ void VertexBufferDX12::setData(const void* _data, size_t _size, size_t offset)
 
 	ThrowIfFailed(m_pVertexBufferResource->Map(0, &range, &dataBegin));
 
-	//dataBegin = static_cast<char*>(dataBegin) + offset;
+	dataBegin = static_cast<char*>(dataBegin) + offset;
 
 	memcpy(&dataBegin, _data, sizeof(_size));
 

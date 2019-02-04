@@ -37,6 +37,7 @@ TechniqueDX12::TechniqueDX12(ID3D12Device4* _device,
 	pDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 
 	ThrowIfFailed(_device->CreateGraphicsPipelineState(&pDesc, IID_PPV_ARGS(&m_pPipelineState)));
+	m_pPipelineState->SetName(L"TechniqueDX12 pipeline");
 }
 
 void TechniqueDX12::enable(Renderer* _renderer)
