@@ -66,6 +66,7 @@ void VertexBufferDX12::setData(const void* _data, size_t _size, size_t offset)
 
 	D3D12_RANGE range = {0, 0};
 
+	// comment
 	ThrowIfFailed(m_pVertexBufferResource->Map(0, &range, &dataBegin));
 	
 	memcpy(dataBegin, _data, sizeof(_size));
