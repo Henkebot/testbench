@@ -13,6 +13,14 @@ public:
 	void unbind();
 	size_t getSize();
 
+public:
+	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView() const;
+	ID3D12DescriptorHeap* GetHeap() const;
+	ID3D12Resource1* GetVertexBufferResource() const;
+
 private:
+	ID3D12Device4* m_pDevice;
+	size_t m_totalSize;
+	ID3D12DescriptorHeap* srvHeap = nullptr;
 	ID3D12Resource1* m_pVertexBufferResource;
 };

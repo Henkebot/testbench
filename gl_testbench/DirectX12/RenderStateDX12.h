@@ -10,7 +10,7 @@ public:
 
 	// activate all options in this render state.
 	void set();
-
+	bool IsWireframe() const;
 private:
 	bool m_bWireframe;
 };

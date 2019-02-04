@@ -39,9 +39,13 @@ public:
 	void submit(Mesh* _mesh) override;
 	void frame() override;
 
-	void CreateDevice();
+public:
+	ID3D12RootSignature* GetRootSignature() const;
+	ID3D12Device4* GetDevice() const;
+	ID3D12GraphicsCommandList3* GetCommandList() const;
 
 private:
+	void CreateDevice();
 	void CreateSDLWindow(unsigned int _width, unsigned int _height);
 	void CreateCommandInterface();
 	void CreateSwapChain(int _width = 0, int _height = 0);

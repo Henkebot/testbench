@@ -3,6 +3,7 @@
 #include "MaterialDX12.h"
 #include "MeshDX12.h"
 #include "RenderStateDX12.h"
+#include "TechniqueDX12.h"
 #include "VertexBufferDX12.h"
 
 using namespace Microsoft::WRL;
@@ -18,9 +19,11 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	CreateRenderTargets();
 	SetViewportAndScissorRect(_width, _height);
 	CreateRootSignature();
-	CreateShadersAndPipeLineState();
-	CreateConstantBufferResources();
-	CreateTriangleData();
+
+	// Remove these
+	//CreateShadersAndPipeLineState();
+	//CreateConstantBufferResources();
+	//CreateTriangleData();
 
 	WaitForGPU();
 
@@ -77,28 +80,77 @@ void DX12Renderer::submit(Mesh* _mesh)
 ////////////////////////////////////////////////////
 void DX12Renderer::frame()
 {
+
+	m_pCommandAllocator->Reset();
+	m_pCommandList3->Reset(m_pCommandAllocator, nullptr);
+
+	m_pCommandList3->SetGraphicsRootSignature(m_pRootSignature);
+
+	m_pCommandList3->RSSetViewports(1, &m_Viewport);
+	m_pCommandList3->RSSetScissorRects(1, &m_ScissorRect);
+
+	UINT backBufferIndex			= m_pSwapChain4->GetCurrentBackBufferIndex();
+	D3D12_CPU_DESCRIPTOR_HANDLE cdh = m_pRenderTargetsHeap->GetCPUDescriptorHandleForHeapStart();
+
+	SetResourceTransitionBarrier(m_pCommandList3,
+								 m_pRenderTargets[backBufferIndex],
+								 D3D12_RESOURCE_STATE_PRESENT,
+								 D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	cdh.ptr += m_RenderTargetDescriptorSize * backBufferIndex;
+
+	m_pCommandList3->OMSetRenderTargets(1, &cdh, true, nullptr);
+
+	float clearColor[] = {0.2f, 0.2f, 0.2f, 1.0f};
+	m_pCommandList3->ClearRenderTargetView(cdh, clearColor, 0, nullptr);
+
+	m_pCommandList3->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	for(auto work : drawList2)
 	{
+
 		work.first->enable(this);
+		std::vector<ID3D12DescriptorHeap*> heaps;
+
 		for(auto mesh : work.second)
 		{
-			size_t numberElements = mesh->geometryBuffers[0].numElements;
-			
-			for(auto t : mesh->textures)
+			//size_t numberElements = mesh->geometryBuffers[0].numElements;
+			for(auto& buffer : mesh->geometryBuffers)
 			{
-				// we do not really know here if the sampler has been
-				// defined in the shader.
-				t.second->bind(t.first);
+				UINT StartSlot = buffer.first;
+				auto view	  = dynamic_cast<VertexBufferDX12*>(buffer.second.buffer)
+								->GetVertexBufferResource();
+				m_pCommandList3->SetGraphicsRootShaderResourceView(StartSlot,
+																   view->GetGPUVirtualAddress());
+				heaps.push_back(dynamic_cast<VertexBufferDX12*>(buffer.second.buffer)->GetHeap());
 			}
-			for(auto element : mesh->geometryBuffers)
-			{
-				mesh->bindIAVertexBuffer(element.first);
-			}
-			mesh->txBuffer->bind(work.first->getMaterial());
 			
+
+			//for(auto t : mesh->textures)
+			//{
+			//	// we do not really know here if the sampler has been
+			//	// defined in the shader.
+			//	t.second->bind(t.first);
+			//}
+			//for(auto element : mesh->geometryBuffers)
+			//{
+			//	mesh->bindIAVertexBuffer(element.first);
+			//}
+			//mesh->txBuffer->bind(work.first->getMaterial());
+
+			m_pCommandList3->DrawInstanced(3, 1, 0, 0);
 		}
 	}
 	drawList2.clear();
+
+	SetResourceTransitionBarrier(m_pCommandList3,
+								 m_pRenderTargets[backBufferIndex],
+								 D3D12_RESOURCE_STATE_RENDER_TARGET,
+								 D3D12_RESOURCE_STATE_PRESENT);
+
+	m_pCommandList3->Close();
+
+	ID3D12CommandList* listsToExecute[] = {m_pCommandList3};
+	m_pCommandQueue->ExecuteCommandLists(ARRAYSIZE(listsToExecute), listsToExecute);
 	/*Update();
 	UINT backBufferIndex = m_pSwapChain4->GetCurrentBackBufferIndex();
 	m_pCommandAllocator->Reset();
@@ -145,14 +197,33 @@ void DX12Renderer::frame()
 	m_pCommandQueue->ExecuteCommandLists(ARRAYSIZE(listsToExecute), listsToExecute);*/
 }
 
+ID3D12RootSignature* DX12Renderer::GetRootSignature() const
+{
+	return m_pRootSignature;
+}
+
+ID3D12Device4* DX12Renderer::GetDevice() const
+{
+	return m_pDevice4;
+}
+
+ID3D12GraphicsCommandList3* DX12Renderer::GetCommandList() const
+{
+	return m_pCommandList3;
+}
+
 void DX12Renderer::CreateDevice()
 {
 	ComPtr<ID3D12Debug> debugController;
+	ComPtr<ID3D12Debug1> debugController1;
 
 	if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 	{
 		debugController->EnableDebugLayer();
 	}
+
+	debugController->QueryInterface(IID_PPV_ARGS(&debugController1));
+	debugController1->SetEnableGPUBasedValidation(true);
 
 	IDXGIFactory6* factory = nullptr;
 	IDXGIAdapter1* adapter = nullptr;
@@ -278,7 +349,7 @@ void DX12Renderer::SetViewportAndScissorRect(int _width, int _height)
 
 void DX12Renderer::CreateRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE dtRanges[1];
+	/*D3D12_DESCRIPTOR_RANGE dtRanges[1];
 	dtRanges[0].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 	dtRanges[0].NumDescriptors					  = 1;
 	dtRanges[0].BaseShaderRegister				  = 0;
@@ -300,12 +371,26 @@ void DX12Renderer::CreateRootSignature()
 	rsDesc.pParameters		 = rootParam;
 	rsDesc.NumStaticSamplers = 0;
 	rsDesc.pStaticSamplers   = nullptr;
+*/
+	CD3DX12_ROOT_PARAMETER rootParameters[3];
+	rootParameters[0].InitAsShaderResourceView(POSITION);
+	rootParameters[1].InitAsShaderResourceView(NORMAL);
+	rootParameters[2].InitAsShaderResourceView(TEXTCOORD);
+
+	D3D12_ROOT_SIGNATURE_FLAGS rootFlags =
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	rootSignatureDesc.Init(_countof(rootParameters), rootParameters);
 
 	ID3DBlob* sBlob;
-	D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sBlob, nullptr);
+	ThrowIfFailed(D3D12SerializeRootSignature(
+		&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sBlob, nullptr));
 
-	m_pDevice4->CreateRootSignature(
-		0, sBlob->GetBufferPointer(), sBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature));
+	ThrowIfFailed(m_pDevice4->CreateRootSignature(
+		0, sBlob->GetBufferPointer(), sBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature)));
 }
 
 void DX12Renderer::CreateShadersAndPipeLineState()
@@ -545,7 +630,7 @@ void DX12Renderer::SetResourceTransitionBarrier(ID3D12GraphicsCommandList* comma
 ////////////////////////////////////////////////////
 Material* DX12Renderer::makeMaterial(const std::string& _name)
 {
-	return new MaterialDX12();
+	return new MaterialDX12(m_pDevice4);
 }
 
 ////////////////////////////////////////////////////
@@ -599,5 +684,5 @@ ConstantBuffer* DX12Renderer::makeConstantBuffer(std::string _name, unsigned int
 ////////////////////////////////////////////////////
 Technique* DX12Renderer::makeTechnique(Material* _material, RenderState* _renderState)
 {
-	return new Technique(_material, _renderState);
+	return new TechniqueDX12(this, _material, _renderState);
 }

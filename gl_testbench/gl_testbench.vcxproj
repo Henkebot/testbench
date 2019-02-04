@@ -154,6 +154,7 @@
     <ClCompile Include="DirectX12\MaterialDX12.cpp" />
     <ClCompile Include="DirectX12\MeshDX12.cpp" />
     <ClCompile Include="DirectX12\RenderStateDX12.cpp" />
+    <ClCompile Include="DirectX12\TechniqueDX12.cpp" />
     <ClCompile Include="DirectX12\VertexBufferDX12.cpp" />
     <ClCompile Include="OpenGL\ConstantBufferGL.cpp" />
     <ClCompile Include="OpenGL\MaterialGL.cpp" />
@@ -188,6 +189,7 @@
     <ClInclude Include="DirectX12\MaterialDX12.h" />
     <ClInclude Include="DirectX12\MeshDX12.h" />
     <ClInclude Include="DirectX12\RenderStateDX12.h" />
+    <ClInclude Include="DirectX12\TechniqueDX12.h" />
     <ClInclude Include="DirectX12\VertexBufferDX12.h" />
     <ClInclude Include="OpenGL\ConstantBufferGL.h" />
     <ClInclude Include="OpenGL\MaterialGL.h" />

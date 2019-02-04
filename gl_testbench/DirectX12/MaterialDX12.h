@@ -46,12 +46,14 @@ public:
 	// disable material
 	virtual void disable() override;
 
+	public:
+	D3D12_SHADER_BYTECODE GetShaderByteCode(const ShaderType& _type) const;
+
 private:
 	// DX12Renderer handles this pointer
 	ID3D12Device4* m_pDevice; 
 
-	ID3DBlob* m_pVertexBlob;
-	ID3DBlob* m_pPixelBlob;
+	ID3DBlob* m_pBlobs[(unsigned long long)ShaderType::CS + 1];
 
 	std::map<unsigned int, ConstantBufferDX12*> constantBuffers;
 

@@ -91,7 +91,7 @@ void MaterialDX12::_compileShader(ShaderType _type)
 	LPCSTR pTarget					 = _targetName(_type);
 	UINT Flags1						 = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 	UINT Flags2						 = 0;
-	ID3DBlob** ppCode				 = &m_pVertexBlob;
+	ID3DBlob** ppCode				 = &m_pBlobs[(unsigned long long)_type];
 	ID3DBlob* ppErrorMsgs			 = nullptr;
 
 	ThrowIfFailed(D3DCompile(pSrcData,
@@ -158,3 +158,13 @@ int MaterialDX12::enable()
 
 ////////////////////////////////////////////////////
 void MaterialDX12::disable() {}
+
+D3D12_SHADER_BYTECODE MaterialDX12::GetShaderByteCode(const ShaderType& _type) const
+{
+	D3D12_SHADER_BYTECODE desc;
+
+	desc.pShaderBytecode = m_pBlobs[(unsigned long long)_type]->GetBufferPointer();
+	desc.BytecodeLength  = m_pBlobs[(unsigned long long)_type]->GetBufferSize();
+
+	return desc;
+}
