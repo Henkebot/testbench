@@ -41,8 +41,11 @@ public:
 
 public:
 	ID3D12RootSignature* GetRootSignature() const;
+	ID3D12DescriptorHeap* GetSRVHeap() const;
 	ID3D12Device4* GetDevice() const;
 	ID3D12GraphicsCommandList3* GetCommandList() const;
+
+	void ExecuteCommandList();
 
 private:
 	void CreateDevice();
@@ -84,11 +87,9 @@ private:
 	ID3D12PipelineState* m_pPipeLineState;
 
 	ID3D12DescriptorHeap* m_pCBVHeap[NUM_BACK_BUFFERS];
+	ID3D12DescriptorHeap* m_pSRVHeap;
 
-	ID3D12Resource1* m_pConstantBufferResource[NUM_BACK_BUFFERS];
-	ID3D12Resource1* m_pVertexBufferResource = nullptr;
 
-	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
 
 	struct m_ConstantBuffer
 	{

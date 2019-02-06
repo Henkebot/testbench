@@ -17,9 +17,9 @@ VSOut VS_Main(in uint vertexID : SV_VertexID)
 {
 	VSOut output = (VSOut)0;
 	
-	output.pos = normal[vertexID];
+	output.pos = position[vertexID];
 	//
-	output.color = float4(1, 1, 1, 1);
+	output.color = float4(uvs[vertexID],0.0f,1.0f);
 
 	return output;
 }

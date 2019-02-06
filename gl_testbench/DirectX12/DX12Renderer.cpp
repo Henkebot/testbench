@@ -20,6 +20,12 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	SetViewportAndScissorRect(_width, _height);
 	CreateRootSignature();
 
+	D3D12_DESCRIPTOR_HEAP_DESC heapDescriptorDesc = {};
+	heapDescriptorDesc.NumDescriptors			  = 3;
+	heapDescriptorDesc.Flags					  = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	heapDescriptorDesc.Type						  = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	m_pDevice4->CreateDescriptorHeap(&heapDescriptorDesc, IID_PPV_ARGS(&m_pSRVHeap));
+
 	// Remove these
 	//CreateShadersAndPipeLineState();
 	//CreateConstantBufferResources();
@@ -84,7 +90,13 @@ void DX12Renderer::frame()
 	m_pCommandAllocator->Reset();
 	m_pCommandList3->Reset(m_pCommandAllocator, nullptr);
 
+	ID3D12DescriptorHeap* descriptorHeaps[] = {m_pSRVHeap};
+	m_pCommandList3->SetDescriptorHeaps(ARRAYSIZE(descriptorHeaps), descriptorHeaps);
+
 	m_pCommandList3->SetGraphicsRootSignature(m_pRootSignature);
+
+	m_pCommandList3->SetGraphicsRootDescriptorTable(
+		0, m_pSRVHeap->GetGPUDescriptorHandleForHeapStart());
 
 	m_pCommandList3->RSSetViewports(1, &m_Viewport);
 	m_pCommandList3->RSSetScissorRects(1, &m_ScissorRect);
@@ -119,11 +131,10 @@ void DX12Renderer::frame()
 				UINT StartSlot = buffer.first;
 				auto view	  = dynamic_cast<VertexBufferDX12*>(buffer.second.buffer)
 								->GetVertexBufferResource();
-				m_pCommandList3->SetGraphicsRootShaderResourceView(StartSlot,
+				/*m_pCommandList3->SetGraphicsRootShaderResourceView(StartSlot,
 																   view->GetGPUVirtualAddress());
-				heaps.push_back(dynamic_cast<VertexBufferDX12*>(buffer.second.buffer)->GetHeap());
+				heaps.push_back(dynamic_cast<VertexBufferDX12*>(buffer.second.buffer)->GetHeap());*/
 			}
-			
 
 			//for(auto t : mesh->textures)
 			//{
@@ -202,6 +213,11 @@ ID3D12RootSignature* DX12Renderer::GetRootSignature() const
 	return m_pRootSignature;
 }
 
+ID3D12DescriptorHeap* DX12Renderer::GetSRVHeap() const
+{
+	return m_pSRVHeap;
+}
+
 ID3D12Device4* DX12Renderer::GetDevice() const
 {
 	return m_pDevice4;
@@ -210,6 +226,12 @@ ID3D12Device4* DX12Renderer::GetDevice() const
 ID3D12GraphicsCommandList3* DX12Renderer::GetCommandList() const
 {
 	return m_pCommandList3;
+}
+
+void DX12Renderer::ExecuteCommandList()
+{
+	ID3D12CommandList* listsToExecute[] = {m_pCommandList3};
+	m_pCommandQueue->ExecuteCommandLists(ARRAYSIZE(listsToExecute), listsToExecute);
 }
 
 void DX12Renderer::CreateDevice()
@@ -372,22 +394,48 @@ void DX12Renderer::CreateRootSignature()
 	rsDesc.NumStaticSamplers = 0;
 	rsDesc.pStaticSamplers   = nullptr;
 */
-	CD3DX12_ROOT_PARAMETER rootParameters[3];
-	rootParameters[0].InitAsShaderResourceView(POSITION);
-	rootParameters[1].InitAsShaderResourceView(NORMAL);
-	rootParameters[2].InitAsShaderResourceView(TEXTCOORD);
 
-	D3D12_ROOT_SIGNATURE_FLAGS rootFlags =
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+	//define descriptor range(s)
+	D3D12_DESCRIPTOR_RANGE dtRanges[3];
+	dtRanges[0].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	dtRanges[0].NumDescriptors					  = 1; //only one CB in this example
+	dtRanges[0].BaseShaderRegister				  = 0; //register b0
+	dtRanges[0].RegisterSpace					  = 0; //register(b0,space0);
+	dtRanges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(_countof(rootParameters), rootParameters);
+	dtRanges[1].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	dtRanges[1].NumDescriptors					  = 1; //only one CB in this example
+	dtRanges[1].BaseShaderRegister				  = 1; //register b0
+	dtRanges[1].RegisterSpace					  = 0; //register(b0,space0);
+	dtRanges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+	dtRanges[2].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	dtRanges[2].NumDescriptors					  = 1; //only one CB in this example
+	dtRanges[2].BaseShaderRegister				  = 2; //register b0
+	dtRanges[2].RegisterSpace					  = 0; //register(b0,space0);
+	dtRanges[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+	//create a descriptor table
+	D3D12_ROOT_DESCRIPTOR_TABLE dt;
+	dt.NumDescriptorRanges = ARRAYSIZE(dtRanges);
+	dt.pDescriptorRanges   = dtRanges;
+
+	//create root parameter
+	D3D12_ROOT_PARAMETER rootParam[1];
+	rootParam[0].ParameterType	= D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParam[0].DescriptorTable  = dt;
+	rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	D3D12_ROOT_SIGNATURE_DESC rsDesc;
+	rsDesc.Flags			 = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rsDesc.NumParameters	 = ARRAYSIZE(rootParam);
+	rsDesc.pParameters		 = rootParam;
+	rsDesc.NumStaticSamplers = 0;
+	rsDesc.pStaticSamplers   = nullptr;
 
 	ID3DBlob* sBlob;
-	ThrowIfFailed(D3D12SerializeRootSignature(
-		&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sBlob, nullptr));
+	ThrowIfFailed(
+		D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sBlob, nullptr));
 
 	ThrowIfFailed(m_pDevice4->CreateRootSignature(
 		0, sBlob->GetBufferPointer(), sBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature)));
@@ -459,7 +507,7 @@ void DX12Renderer::CreateShadersAndPipeLineState()
 
 void DX12Renderer::CreateConstantBufferResources()
 {
-	for(int i = 0; i < NUM_BACK_BUFFERS; i++)
+	/*for(int i = 0; i < NUM_BACK_BUFFERS; i++)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDescriptorDesc = {};
 		heapDescriptorDesc.NumDescriptors			  = 1;
@@ -503,7 +551,7 @@ void DX12Renderer::CreateConstantBufferResources()
 
 		m_pDevice4->CreateConstantBufferView(&cbvDesc,
 											 m_pCBVHeap[i]->GetCPUDescriptorHandleForHeapStart());
-	}
+	}*/
 }
 
 void DX12Renderer::CreateTriangleData()
@@ -551,24 +599,24 @@ void DX12Renderer::CreateTriangleData()
 	rd.SampleDesc.Count	= 1;
 	rd.Layout			   = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	m_pDevice4->CreateCommittedResource(&hp,
+	/*m_pDevice4->CreateCommittedResource(&hp,
 										D3D12_HEAP_FLAG_NONE,
 										&rd,
 										D3D12_RESOURCE_STATE_GENERIC_READ,
 										nullptr,
-										IID_PPV_ARGS(&m_pVertexBufferResource));
+										IID_PPV_ARGS(&m_pVertexBufferResource));*/
 
-	m_pVertexBufferResource->SetName(L"vb heap");
+	//m_pVertexBufferResource->SetName(L"vb heap");
 
 	void* dataBegin   = nullptr;
 	D3D12_RANGE range = {0, 0};
-	m_pVertexBufferResource->Map(0, &range, &dataBegin);
+	/*m_pVertexBufferResource->Map(0, &range, &dataBegin);
 	memcpy(dataBegin, triangleVertices, sizeof(triangleVertices));
-	m_pVertexBufferResource->Unmap(0, nullptr);
+	m_pVertexBufferResource->Unmap(0, nullptr);*/
 
-	m_VertexBufferView.BufferLocation = m_pVertexBufferResource->GetGPUVirtualAddress();
+	/*m_VertexBufferView.BufferLocation = m_pVertexBufferResource->GetGPUVirtualAddress();
 	m_VertexBufferView.StrideInBytes  = sizeof(Vertex);
-	m_VertexBufferView.SizeInBytes	= sizeof(triangleVertices);
+	m_VertexBufferView.SizeInBytes	= sizeof(triangleVertices);*/
 }
 
 void DX12Renderer::WaitForGPU()
@@ -600,7 +648,7 @@ void DX12Renderer::Update()
 	//Update GPU memory
 	void* mappedMem		  = nullptr;
 	D3D12_RANGE readRange = {0, 0}; //We do not intend to read this resource on the CPU.
-	if(SUCCEEDED(m_pConstantBufferResource[m_pSwapChain4->GetCurrentBackBufferIndex()]->Map(
+	/*if(SUCCEEDED(m_pConstantBufferResource[m_pSwapChain4->GetCurrentBackBufferIndex()]->Map(
 		   0, &readRange, &mappedMem)))
 	{
 		memcpy(mappedMem, &m_ConstantBufferCPU, sizeof(m_ConstantBuffer));
@@ -608,7 +656,7 @@ void DX12Renderer::Update()
 		D3D12_RANGE writeRange = {0, sizeof(m_ConstantBuffer)};
 		m_pConstantBufferResource[m_pSwapChain4->GetCurrentBackBufferIndex()]->Unmap(0,
 																					 &writeRange);
-	}
+	}*/
 }
 
 void DX12Renderer::SetResourceTransitionBarrier(ID3D12GraphicsCommandList* commandList,
@@ -642,7 +690,7 @@ Mesh* DX12Renderer::makeMesh()
 ////////////////////////////////////////////////////
 VertexBuffer* DX12Renderer::makeVertexBuffer(size_t _size, VertexBuffer::DATA_USAGE _usage)
 {
-	return new VertexBufferDX12(m_pDevice4, _size, _usage);
+	return new VertexBufferDX12(this, _size, _usage);
 }
 
 ////////////////////////////////////////////////////

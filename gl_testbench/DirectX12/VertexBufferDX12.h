@@ -6,7 +6,7 @@ class VertexBufferDX12 : public VertexBuffer
 {
 
 public:
-	VertexBufferDX12(ID3D12Device4* _device, size_t _size, VertexBuffer::DATA_USAGE _usage);
+	VertexBufferDX12(DX12Renderer* _renderer, size_t _size, VertexBuffer::DATA_USAGE _usage);
 
 	void setData(const void* data, size_t size, size_t offset);
 	void bind(size_t offset, size_t size, unsigned int location);
@@ -19,8 +19,10 @@ public:
 	ID3D12Resource1* GetVertexBufferResource() const;
 
 private:
-	ID3D12Device4* m_pDevice;
+	DX12Renderer* m_pRender;
 	size_t m_totalSize;
-	ID3D12DescriptorHeap* srvHeap = nullptr;
 	ID3D12Resource1* m_pVertexBufferResource;
+	ID3D12Resource1* m_pVertexBufferUpload;
+	bool m_bHasSRV;
+	void _createSRV(size_t _ElementSize);
 };

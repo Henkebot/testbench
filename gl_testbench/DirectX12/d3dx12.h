@@ -1835,7 +1835,7 @@ inline void MemcpySubresource(_In_ const D3D12_MEMCPY_DEST* pDest,
 		for(UINT y = 0; y < NumRows; ++y)
 		{
 			memcpy(
-				pDestSlice + pDest->RowPitch * y, pSrcSlice + pSrc->RowPitch * y, RowSizeInBytes);
+				pDestSlice + pDest->RowPitch * y, pSrcSlice + pSrc->RowPitch * y, 44);
 		}
 	}
 }
