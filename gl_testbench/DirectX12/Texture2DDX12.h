@@ -16,6 +16,7 @@ public:
 	void bind(unsigned int slot) override;
 
 private:
+	unsigned char* rgb;
 	ID3D12Resource* m_pTextureResource;
 	ID3D12Resource* m_pTextureUpload;
 	DX12Renderer* m_pRender;

@@ -4,8 +4,8 @@
 #include "MeshDX12.h"
 #include "RenderStateDX12.h"
 #include "TechniqueDX12.h"
-#include "VertexBufferDX12.h"
 #include "Texture2DDX12.h"
+#include "VertexBufferDX12.h"
 
 using namespace Microsoft::WRL;
 
@@ -20,7 +20,6 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	CreateRenderTargets();
 	SetViewportAndScissorRect(_width, _height);
 	CreateRootSignature();
-
 
 	/*
 	0 = pos
@@ -297,15 +296,19 @@ void DX12Renderer::CreateCommandInterface()
 {
 	D3D12_COMMAND_QUEUE_DESC cqd = {};
 	m_pDevice4->CreateCommandQueue(&cqd, IID_PPV_ARGS(&m_pCommandQueue));
+	m_pCommandQueue->SetName(L"Ica arbetsdag");
 
 	m_pDevice4->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
 									   IID_PPV_ARGS(&m_pCommandAllocator));
+	m_pCommandAllocator->SetName(L"Ica lager");
 
 	m_pDevice4->CreateCommandList(0,
 								  D3D12_COMMAND_LIST_TYPE_DIRECT,
 								  m_pCommandAllocator,
 								  nullptr,
 								  IID_PPV_ARGS(&m_pCommandList3));
+
+	m_pCommandList3->SetName(L"Ica Anställda");
 	//m_pCommandList3->Close();
 }
 
@@ -408,31 +411,18 @@ void DX12Renderer::CreateRootSignature()
 */
 
 	//define descriptor range(s)
-	D3D12_DESCRIPTOR_RANGE dtRanges[4];
+	D3D12_DESCRIPTOR_RANGE dtRanges[2];
 	dtRanges[0].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	dtRanges[0].NumDescriptors					  = 1; //only one CB in this example
+	dtRanges[0].NumDescriptors					  = 3; //only one CB in this example
 	dtRanges[0].BaseShaderRegister				  = 0; //register b0
 	dtRanges[0].RegisterSpace					  = 0; //register(b0,space0);
 	dtRanges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 	dtRanges[1].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	dtRanges[1].NumDescriptors					  = 1; //only one CB in this example
-	dtRanges[1].BaseShaderRegister				  = 1; //register b0
-	dtRanges[1].RegisterSpace					  = 0; //register(b0,space0);
-	dtRanges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	dtRanges[2].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	dtRanges[2].NumDescriptors					  = 1; //only one CB in this example
-	dtRanges[2].BaseShaderRegister				  = 2; //register b0
-	dtRanges[2].RegisterSpace					  = 0; //register(b0,space0);
-	dtRanges[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-	dtRanges[3].RangeType						  = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	dtRanges[3].NumDescriptors					  = 1; //only one CB in this example
-	dtRanges[3].BaseShaderRegister				  = DIFFUSE_SLOT; //register b0
-	dtRanges[3].RegisterSpace					  = 1; //register(b0,space0);
-	dtRanges[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
+	dtRanges[1].BaseShaderRegister				  = 3; //register t3
+	dtRanges[1].RegisterSpace					  = 0; //register(b0,space1);
+	dtRanges[1].OffsetInDescriptorsFromTableStart = 5;
 
 	//create a descriptor table
 	D3D12_ROOT_DESCRIPTOR_TABLE dt;
@@ -440,7 +430,7 @@ void DX12Renderer::CreateRootSignature()
 	dt.pDescriptorRanges   = dtRanges;
 
 	//create root parameter
-	D3D12_ROOT_PARAMETER rootParam[4];
+	D3D12_ROOT_PARAMETER rootParam[3];
 	rootParam[0].ParameterType	= D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	rootParam[0].DescriptorTable  = dt;
 	rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -455,13 +445,11 @@ void DX12Renderer::CreateRootSignature()
 	rootParam[2].Descriptor.ShaderRegister = DIFFUSE_TINT;
 	rootParam[2].ShaderVisibility		   = D3D12_SHADER_VISIBILITY_VERTEX;
 
-
-
 	D3D12_STATIC_SAMPLER_DESC sampler = {};
 	sampler.Filter					  = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	sampler.AddressU				  = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler.AddressV				  = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler.AddressW				  = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	sampler.AddressU				  = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	sampler.AddressV				  = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	sampler.AddressW				  = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 	sampler.MipLODBias				  = 0;
 	sampler.MaxAnisotropy			  = 0;
 	sampler.ComparisonFunc			  = D3D12_COMPARISON_FUNC_NEVER;
@@ -473,7 +461,7 @@ void DX12Renderer::CreateRootSignature()
 	sampler.ShaderVisibility		  = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	D3D12_ROOT_SIGNATURE_DESC rsDesc;
-	rsDesc.Flags			 = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	rsDesc.Flags			 = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 	rsDesc.NumParameters	 = ARRAYSIZE(rootParam);
 	rsDesc.pParameters		 = rootParam;
 	rsDesc.NumStaticSamplers = 1;
@@ -483,8 +471,6 @@ void DX12Renderer::CreateRootSignature()
 	ThrowIfFailed(
 		D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sBlob, nullptr));
 
-	if(sBlob)
-	printf("%ls", sBlob->GetBufferPointer());
 
 	ThrowIfFailed(m_pDevice4->CreateRootSignature(
 		0, sBlob->GetBufferPointer(), sBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature)));

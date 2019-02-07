@@ -55,7 +55,7 @@ void updateDelta()
 };
 
 // TOTAL_TRIS pretty much decides how many drawcalls in a brute force approach.
-constexpr int TOTAL_TRIS = 4.0f;
+constexpr int TOTAL_TRIS = 1000.0f;
 // this has to do with how the triangles are spread in the screen, not important.
 constexpr int TOTAL_PLACES = 2 * TOTAL_TRIS;
 float xt[TOTAL_PLACES], yt[TOTAL_PLACES];
@@ -323,7 +323,7 @@ void shutdown()
 
 int main(int argc, char* argv[])
 {
-	renderer = Renderer::makeRenderer(Renderer::BACKEND::DX12);
+	renderer = Renderer::makeRenderer(Renderer::BACKEND::GL45);
 	renderer->initialize(800, 600);
 	renderer->setWinTitle("OpenGL");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);

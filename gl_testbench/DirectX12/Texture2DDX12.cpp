@@ -1,4 +1,6 @@
 #include "Texture2DDX12.h"
+
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 Texture2DDX12::Texture2DDX12(DX12Renderer* _render)
@@ -7,8 +9,9 @@ Texture2DDX12::Texture2DDX12(DX12Renderer* _render)
 
 int Texture2DDX12::loadFromFile(std::string filename)
 {
+
 	int w, h, bpp;
-	unsigned char* rgb = stbi_load(filename.c_str(), &w, &h, &bpp, STBI_rgb_alpha);
+	rgb = stbi_load(filename.c_str(), &w, &h, &bpp, STBI_rgb_alpha);
 	if(rgb == nullptr)
 	{
 		fprintf(stderr, "Error loading texture file: %s\n", filename.c_str());
@@ -55,7 +58,7 @@ int Texture2DDX12::loadFromFile(std::string filename)
 	D3D12_SUBRESOURCE_DATA textureData = {};
 	textureData.pData				   = &rgb[0];
 	textureData.RowPitch			   = w * bpp;
-	textureData.SlicePitch			   = textureData.RowPitch * h;
+	textureData.SlicePitch			   = textureData.RowPitch * w;
 
 	UpdateSubresources(
 		m_pRender->GetCommandList(), m_pTextureResource, m_pTextureUpload, 0, 0, 1, &textureData);
@@ -74,11 +77,11 @@ int Texture2DDX12::loadFromFile(std::string filename)
 	srvDesc.Texture2D.MipLevels				= 1;
 
 
-	UINT heapSize = m_pRender->GetDevice()->GetDescriptorHandleIncrementSize(
+	UINT descriptorSize = m_pRender->GetDevice()->GetDescriptorHandleIncrementSize(
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
-		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(), 5, heapSize);
+		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(), 5, descriptorSize);
 
 	m_pRender->GetDevice()->CreateShaderResourceView(
 		m_pTextureResource, &srvDesc, handle);
@@ -86,6 +89,8 @@ int Texture2DDX12::loadFromFile(std::string filename)
 	m_pRender->GetCommandList()->Close();
 
 	m_pRender->ExecuteCommandList();
+	//stbi_image_free(rgb);
+
 
 }
 
