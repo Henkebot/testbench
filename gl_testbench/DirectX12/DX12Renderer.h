@@ -71,6 +71,9 @@ private:
 	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
 	IDXGISwapChain4* m_pSwapChain4				= nullptr;
 
+	
+	float m_ClearColor[4];
+
 	ID3D12Fence1* m_pFence = nullptr;
 	int m_fenceValue	   = 0;
 	HANDLE m_EventHandle   = nullptr;

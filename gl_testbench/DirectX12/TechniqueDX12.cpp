@@ -52,4 +52,6 @@ void TechniqueDX12::enable(Renderer* renderer)
 	DX12Renderer* ren = dynamic_cast<DX12Renderer*>(renderer);
 
 	ren->GetCommandList()->SetPipelineState(m_pPipelineState);
+
+	material->enable();
 }

@@ -2,15 +2,16 @@
 
 #include "../Material.h"
 #include "DX12Common.h"
+#include "DX12Renderer.h"
 
 class ConstantBufferDX12;
-class DX12Renderer;
+
 
 class MaterialDX12 : public Material
 {
 	friend class ConstantBufferDX12;
 public:
-	MaterialDX12(ID3D12Device4* _device);
+	MaterialDX12(DX12Renderer* _device);
 	~MaterialDX12() = default;
 
 	// set shader name, DOES NOT COMPILE
@@ -51,7 +52,7 @@ public:
 
 private:
 	// DX12Renderer handles this pointer
-	ID3D12Device4* m_pDevice; 
+	DX12Renderer* m_pDevice; 
 
 	ID3DBlob* m_pBlobs[(unsigned long long)ShaderType::CS + 1];
 

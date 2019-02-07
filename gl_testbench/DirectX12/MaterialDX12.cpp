@@ -4,8 +4,9 @@
 #include <sstream>
 #include <vector>
 
+
 ////////////////////////////////////////////////////
-MaterialDX12::MaterialDX12(ID3D12Device4* _device)
+MaterialDX12::MaterialDX12(DX12Renderer* _device)
 	: Material()
 	, m_pDevice(_device)
 {}
@@ -117,9 +118,9 @@ LPCSTR MaterialDX12::_targetName(ShaderType _type)
 	switch(_type)
 	{
 	case ShaderType::VS:
-		return "vs_5_0";
+		return "vs_5_1";
 	case ShaderType::PS:
-		return "ps_5_0";
+		return "ps_5_1";
 	default:
 		return nullptr;
 	}
@@ -153,7 +154,14 @@ void MaterialDX12::updateConstantBuffer(const void* data, size_t size, unsigned 
 ////////////////////////////////////////////////////
 int MaterialDX12::enable()
 {
-	return 0;
+	for (auto con : constantBuffers)
+	{
+		
+		m_pDevice->GetCommandList()->SetGraphicsRootConstantBufferView(
+			2, con.second->GetConstantBufferResc()->GetGPUVirtualAddress());
+		return 0;
+
+	}
 }
 
 ////////////////////////////////////////////////////
