@@ -13,16 +13,10 @@ public:
 	void unbind();
 	size_t getSize();
 
-public:
-	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView() const;
-	ID3D12DescriptorHeap* GetHeap() const;
-	ID3D12Resource1* GetVertexBufferResource() const;
-
 private:
 	DX12Renderer* m_pRender;
 	size_t m_totalSize;
-	ID3D12Resource1* m_pVertexBufferResource;
-	ID3D12Resource1* m_pVertexBufferUpload;
+	Microsoft::WRL::ComPtr < ID3D12Resource1> m_pVertexBufferUpload;
 	bool m_bHasSRV;
 	void _createSRV(size_t _ElementSize);
 };

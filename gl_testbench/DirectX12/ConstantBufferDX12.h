@@ -6,7 +6,7 @@ class ConstantBufferDX12 : public ConstantBuffer
 {
 public:
 	ConstantBufferDX12(DX12Renderer* _render, std::string _name, unsigned int _location);
-	~ConstantBufferDX12();
+	~ConstantBufferDX12() = default;
 
 	void setData(const void* data, size_t size, Material* m, unsigned int location);
 	void _createCBV(const size_t& size);
@@ -18,5 +18,5 @@ public:
 private:
 	UINT m_Location;
 	DX12Renderer* m_pRender;
-	ID3D12Resource* m_pConstantBufferResource;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_pConstantBufferResource;
 };

@@ -75,5 +75,5 @@ void ConstantBufferDX12::bind(Material* _mat)
 
 ID3D12Resource* ConstantBufferDX12::GetConstantBufferResc() const
 {
-	return m_pConstantBufferResource;
+	return m_pConstantBufferResource.Get();
 }

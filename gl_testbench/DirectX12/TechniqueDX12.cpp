@@ -4,7 +4,6 @@
 #include "MaterialDX12.h"
 #include "RenderStateDX12.h"
 
-
 TechniqueDX12::TechniqueDX12(Renderer* _renderer, Material* _material, RenderState* _renderstate)
 	: Technique(_material, _renderstate)
 {
@@ -18,8 +17,9 @@ TechniqueDX12::TechniqueDX12(Renderer* _renderer, Material* _material, RenderSta
 	gpsd.VS									= mat->GetShaderByteCode(Material::ShaderType::VS);
 	gpsd.PS									= mat->GetShaderByteCode(Material::ShaderType::PS);
 
-	gpsd.RTVFormats[0]	= DXGI_FORMAT_R8G8B8A8_UNORM;
 	gpsd.NumRenderTargets = 1;
+	gpsd.RTVFormats[0]	= DXGI_FORMAT_R8G8B8A8_UNORM;
+	gpsd.DSVFormat		  = DXGI_FORMAT_D32_FLOAT;
 
 	gpsd.SampleDesc.Count = 1;
 	gpsd.SampleMask		  = UINT_MAX;
@@ -28,30 +28,19 @@ TechniqueDX12::TechniqueDX12(Renderer* _renderer, Material* _material, RenderSta
 		rs->IsWireframe() ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
 
 	gpsd.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
-
-	D3D12_RENDER_TARGET_BLEND_DESC defaultRTdesc = {false,
-													false,
-													D3D12_BLEND_ONE,
-													D3D12_BLEND_ZERO,
-													D3D12_BLEND_OP_ADD,
-													D3D12_BLEND_ONE,
-													D3D12_BLEND_ZERO,
-													D3D12_BLEND_OP_ADD,
-													D3D12_LOGIC_OP_NOOP,
-													D3D12_COLOR_WRITE_ENABLE_ALL};
-
-	for(UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
-		gpsd.BlendState.RenderTarget[i] = defaultRTdesc;
+	gpsd.BlendState				  = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	gpsd.DepthStencilState		  = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	gpsd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
 	ThrowIfFailed(
 		ren->GetDevice()->CreateGraphicsPipelineState(&gpsd, IID_PPV_ARGS(&m_pPipelineState)));
 }
 
-void TechniqueDX12::enable(Renderer* renderer) 
+void TechniqueDX12::enable(Renderer* renderer)
 {
 	DX12Renderer* ren = dynamic_cast<DX12Renderer*>(renderer);
 
-	ren->GetCommandList()->SetPipelineState(m_pPipelineState);
+	ren->GetCommandList()->SetPipelineState(m_pPipelineState.Get());
 
 	material->enable();
 }

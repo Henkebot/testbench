@@ -11,7 +11,7 @@ int Texture2DDX12::loadFromFile(std::string filename)
 {
 
 	int w, h, bpp;
-	rgb = stbi_load(filename.c_str(), &w, &h, &bpp, STBI_rgb_alpha);
+	stbi_uc* rgb = stbi_load(filename.c_str(), &w, &h, &bpp, STBI_rgb_alpha);
 	if(rgb == nullptr)
 	{
 		fprintf(stderr, "Error loading texture file: %s\n", filename.c_str());
@@ -40,7 +40,7 @@ int Texture2DDX12::loadFromFile(std::string filename)
 														IID_PPV_ARGS(&m_pTextureResource)));
 
 	// Get the size needed for this texture buffer
-	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_pTextureResource, 0, 1);
+	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_pTextureResource.Get(), 0, 1);
 
 	// This is the GPU upload buffer.
 	CD3DX12_HEAP_PROPERTIES heapProp2(D3D12_HEAP_TYPE_UPLOAD);
@@ -61,10 +61,10 @@ int Texture2DDX12::loadFromFile(std::string filename)
 	textureData.SlicePitch			   = textureData.RowPitch * w;
 
 	UpdateSubresources(
-		m_pRender->GetCommandList(), m_pTextureResource, m_pTextureUpload, 0, 0, 1, &textureData);
+		m_pRender->GetCommandList(), m_pTextureResource.Get(), m_pTextureUpload.Get(), 0, 0, 1, &textureData);
 
 	CD3DX12_RESOURCE_BARRIER transition(
-		CD3DX12_RESOURCE_BARRIER::Transition(m_pTextureResource,
+		CD3DX12_RESOURCE_BARRIER::Transition(m_pTextureResource.Get(),
 											 D3D12_RESOURCE_STATE_COPY_DEST,
 											 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 	m_pRender->GetCommandList()->ResourceBarrier(1, &transition);
@@ -81,15 +81,15 @@ int Texture2DDX12::loadFromFile(std::string filename)
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
-		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(), 5, descriptorSize);
+		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(), 5 /*Heap slot*/, descriptorSize);
 
 	m_pRender->GetDevice()->CreateShaderResourceView(
-		m_pTextureResource, &srvDesc, handle);
+		m_pTextureResource.Get(), &srvDesc, handle);
 
 	m_pRender->GetCommandList()->Close();
 
 	m_pRender->ExecuteCommandList();
-	//stbi_image_free(rgb);
+	stbi_image_free(rgb);
 
 
 }

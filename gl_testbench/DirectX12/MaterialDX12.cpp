@@ -11,6 +11,8 @@ MaterialDX12::MaterialDX12(DX12Renderer* _device)
 	, m_pDevice(_device)
 {}
 
+MaterialDX12::~MaterialDX12() {}
+
 ////////////////////////////////////////////////////
 void MaterialDX12::setShader(const std::string& _shaderFileName, ShaderType _type)
 {
@@ -159,9 +161,9 @@ int MaterialDX12::enable()
 		
 		m_pDevice->GetCommandList()->SetGraphicsRootConstantBufferView(
 			2, con.second->GetConstantBufferResc()->GetGPUVirtualAddress());
-		return 0;
 
 	}
+	return 0;
 }
 
 ////////////////////////////////////////////////////

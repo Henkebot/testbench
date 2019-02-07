@@ -51,48 +51,43 @@ private:
 	void CreateDevice();
 	void CreateSDLWindow(unsigned int _width, unsigned int _height);
 	void CreateCommandInterface();
+	void CreateDepthStencil(unsigned int _width, unsigned int _height);
+	void CreateDescriptorHeaps();
 	void CreateSwapChain(int _width = 0, int _height = 0);
 	void CreateFenceAndEvent();
 	void CreateRenderTargets();
 	void SetViewportAndScissorRect(int _width, int _height);
 	void CreateRootSignature();
-	void CreateShadersAndPipeLineState();
-	void CreateConstantBufferResources();
-	void CreateTriangleData();
 	void WaitForGPU();
-	void Update();
 
 private:
-	SDL_Window* m_pWindow						= nullptr;
-	ID3D12Device4* m_pDevice4					= nullptr;
-	ID3D12GraphicsCommandList3* m_pCommandList3 = nullptr;
+	SDL_Window* m_pWindow = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Device4> m_pDevice4;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList3> m_pCommandList3;
 
-	ID3D12CommandQueue* m_pCommandQueue			= nullptr;
-	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
-	IDXGISwapChain4* m_pSwapChain4				= nullptr;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_pCommandQueue;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_pCommandAllocator;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain4;
 
-	
 	float m_ClearColor[4];
 
-	ID3D12Fence1* m_pFence = nullptr;
-	int m_fenceValue	   = 0;
-	HANDLE m_EventHandle   = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Fence1> m_pFence;
+	int m_fenceValue	 = 0;
+	HANDLE m_EventHandle = nullptr;
 
-	ID3D12DescriptorHeap* m_pRenderTargetsHeap = nullptr;
-	UINT m_RenderTargetDescriptorSize		   = 0;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pRenderTargetsHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pSRVHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pDSVHeap;
+	UINT m_RenderTargetDescriptorSize = 0;
 
-	ID3D12Resource* m_pRenderTargets[NUM_BACK_BUFFERS];
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_pRenderTargets[NUM_BACK_BUFFERS];
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_pDepthResource;
+
 
 	D3D12_VIEWPORT m_Viewport;
 	D3D12_RECT m_ScissorRect;
 
-	ID3D12RootSignature* m_pRootSignature = nullptr;
-	ID3D12PipelineState* m_pPipeLineState;
-
-	ID3D12DescriptorHeap* m_pCBVHeap[NUM_BACK_BUFFERS];
-	ID3D12DescriptorHeap* m_pSRVHeap;
-
-
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_pRootSignature;
 
 	struct m_ConstantBuffer
 	{

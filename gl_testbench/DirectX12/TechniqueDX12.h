@@ -10,5 +10,5 @@ public:
 	void enable(Renderer* renderer) override;
 
 private:
-	ID3D12PipelineState* m_pPipelineState;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pPipelineState;
 };

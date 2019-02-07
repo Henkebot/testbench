@@ -12,7 +12,7 @@ class MaterialDX12 : public Material
 	friend class ConstantBufferDX12;
 public:
 	MaterialDX12(DX12Renderer* _device);
-	~MaterialDX12() = default;
+	~MaterialDX12();
 
 	// set shader name, DOES NOT COMPILE
 	void setShader(const std::string& _shaderFileName, ShaderType _type) override;
@@ -54,7 +54,7 @@ private:
 	// DX12Renderer handles this pointer
 	DX12Renderer* m_pDevice; 
 
-	ID3DBlob* m_pBlobs[(unsigned long long)ShaderType::CS + 1];
+	Microsoft::WRL::ComPtr<ID3DBlob> m_pBlobs[(unsigned long long)ShaderType::CS + 1];
 
 	std::map<unsigned int, ConstantBufferDX12*> constantBuffers;
 
