@@ -4,7 +4,6 @@
 #include <sstream>
 #include <vector>
 
-
 ////////////////////////////////////////////////////
 MaterialDX12::MaterialDX12(DX12Renderer* _device)
 	: Material()
@@ -115,6 +114,7 @@ void MaterialDX12::_compileShader(ShaderType _type)
 	}
 }
 
+////////////////////////////////////////////////////
 LPCSTR MaterialDX12::_targetName(ShaderType _type)
 {
 	switch(_type)
@@ -128,6 +128,7 @@ LPCSTR MaterialDX12::_targetName(ShaderType _type)
 	}
 }
 
+////////////////////////////////////////////////////
 LPCSTR MaterialDX12::_entryPoint(ShaderType _type)
 {
 	switch(_type)
@@ -156,12 +157,11 @@ void MaterialDX12::updateConstantBuffer(const void* data, size_t size, unsigned 
 ////////////////////////////////////////////////////
 int MaterialDX12::enable()
 {
-	for (auto con : constantBuffers)
+	for(auto con : constantBuffers)
 	{
-		
+
 		m_pDevice->GetCommandList()->SetGraphicsRootConstantBufferView(
 			2, con.second->GetConstantBufferResc()->GetGPUVirtualAddress());
-
 	}
 	return 0;
 }
@@ -169,6 +169,7 @@ int MaterialDX12::enable()
 ////////////////////////////////////////////////////
 void MaterialDX12::disable() {}
 
+////////////////////////////////////////////////////
 D3D12_SHADER_BYTECODE MaterialDX12::GetShaderByteCode(const ShaderType& _type) const
 {
 	D3D12_SHADER_BYTECODE desc;

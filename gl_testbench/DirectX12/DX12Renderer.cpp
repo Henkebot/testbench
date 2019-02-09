@@ -6,8 +6,11 @@
 #include "TechniqueDX12.h"
 #include "Texture2DDX12.h"
 #include "VertexBufferDX12.h"
+#include "Sampler2DDX12.h"
 
 using namespace Microsoft::WRL;
+
+static float depthValue = 0.0f;
 
 ////////////////////////////////////////////////////
 int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
@@ -42,7 +45,7 @@ void DX12Renderer::CreateDepthStencil(unsigned int _width, unsigned int _height)
 
 	D3D12_CLEAR_VALUE depthOptimizedClearValue	= {};
 	depthOptimizedClearValue.Format				  = DXGI_FORMAT_D32_FLOAT;
-	depthOptimizedClearValue.DepthStencil.Depth   = 1.0f;
+	depthOptimizedClearValue.DepthStencil.Depth   = depthValue;
 	depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
 	ThrowIfFailed(m_pDevice4->CreateCommittedResource(
@@ -58,26 +61,31 @@ void DX12Renderer::CreateDepthStencil(unsigned int _width, unsigned int _height)
 									  D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE,
 		&depthOptimizedClearValue,
-		IID_PPV_ARGS(&m_pDepthResource)));;
+		IID_PPV_ARGS(&m_pDepthResource)));
+	;
 
-	m_pDevice4->CreateDepthStencilView(
-		m_pDepthResource.Get(), &depthStencilDesc, m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+	m_pDevice4->CreateDepthStencilView(m_pDepthResource.Get(),
+									   &depthStencilDesc,
+									   m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
 void DX12Renderer::CreateDescriptorHeaps()
 {
+	// Render target heaps
 	D3D12_DESCRIPTOR_HEAP_DESC dhd = {};
 	dhd.NumDescriptors			   = NUM_BACK_BUFFERS;
 	dhd.Type					   = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
 	ThrowIfFailed(m_pDevice4->CreateDescriptorHeap(&dhd, IID_PPV_ARGS(&m_pRenderTargetsHeap)));
 
+	// Depth Stencil heaps
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors			   = 1;
 	dsvHeapDesc.Type					   = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags					   = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	ThrowIfFailed(m_pDevice4->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_pDSVHeap)));
 
+	// SRV heaps
 	/*
 	0 = pos
 	1 = normal
@@ -179,16 +187,13 @@ void DX12Renderer::frame()
 	m_pCommandList3->OMSetRenderTargets(1, &cdh, true, &dsvHandle);
 
 	m_pCommandList3->ClearRenderTargetView(cdh, m_ClearColor, 0, nullptr);
-	m_pCommandList3->ClearDepthStencilView(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart(),
-										 D3D12_CLEAR_FLAG_DEPTH,
-										 1.0f,
-										 0,
-										 0,
-										 nullptr);
+	m_pCommandList3->ClearDepthStencilView(
+		dsvHandle, D3D12_CLEAR_FLAG_DEPTH, depthValue, 0, 0, nullptr);
 
 	m_pCommandList3->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	int counter = 0;
+	//printf("///////////////////////////////////////////\n");
 	for(auto list : drawList2)
 	{
 
@@ -198,11 +203,16 @@ void DX12Renderer::frame()
 
 		for(auto mesh : list.second)
 		{
-			//size_t numberElements = mesh->geometryBuffers[0].numElements;
 
 			mesh->txBuffer->bind(nullptr);
 
-			m_pCommandList3->DrawInstanced(3, 1, 0, 0);
+			size_t numElem  = mesh->geometryBuffers[POSITION].numElements;
+			size_t offset   = mesh->geometryBuffers[POSITION].offset;
+			size_t sizeElem = mesh->geometryBuffers[POSITION].sizeElement;
+			size_t index	= (offset / sizeElem) / 3;
+
+			m_pCommandList3->DrawInstanced(numElem, 1, offset, 0);
+			//printf("%zu\n", index);
 
 			//for(auto t : mesh->textures)
 			//{
@@ -228,6 +238,7 @@ void DX12Renderer::frame()
 
 	ID3D12CommandList* listsToExecute[] = {m_pCommandList3.Get()};
 	m_pCommandQueue->ExecuteCommandLists(ARRAYSIZE(listsToExecute), listsToExecute);
+
 	/*Update();
 	UINT backBufferIndex = m_pSwapChain4->GetCurrentBackBufferIndex();
 	m_pCommandAllocator->Reset();
@@ -494,7 +505,7 @@ void DX12Renderer::CreateRootSignature()
 	rootParam[2].ParameterType			   = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	rootParam[2].Descriptor.RegisterSpace  = 0;
 	rootParam[2].Descriptor.ShaderRegister = DIFFUSE_TINT;
-	rootParam[2].ShaderVisibility		   = D3D12_SHADER_VISIBILITY_VERTEX;
+	rootParam[2].ShaderVisibility		   = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	D3D12_STATIC_SAMPLER_DESC sampler = {};
 	sampler.Filter					  = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
@@ -580,10 +591,11 @@ Texture2D* DX12Renderer::makeTexture2D()
 	return new Texture2DDX12(this);
 }
 
+
 ////////////////////////////////////////////////////
 Sampler2D* DX12Renderer::makeSampler2D()
 {
-	return nullptr;
+	return new Sampler2DDX12();
 }
 
 ////////////////////////////////////////////////////

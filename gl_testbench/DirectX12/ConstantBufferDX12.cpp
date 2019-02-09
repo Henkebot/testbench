@@ -21,8 +21,8 @@ void ConstantBufferDX12::setData(const void* data, size_t size, Material* m, uns
 
 	memcpy(mappedMem, data, size);
 
-	D3D12_RANGE writeRange = {0, size};
-	m_pConstantBufferResource->Unmap(0, &writeRange);
+	
+	//m_pConstantBufferResource->Unmap(0, nullptr);
 }
 
 void ConstantBufferDX12::_createCBV(const size_t& size)
