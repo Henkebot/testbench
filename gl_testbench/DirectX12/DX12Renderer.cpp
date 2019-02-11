@@ -3,10 +3,10 @@
 #include "MaterialDX12.h"
 #include "MeshDX12.h"
 #include "RenderStateDX12.h"
+#include "Sampler2DDX12.h"
 #include "TechniqueDX12.h"
 #include "Texture2DDX12.h"
 #include "VertexBufferDX12.h"
-#include "Sampler2DDX12.h"
 
 using namespace Microsoft::WRL;
 
@@ -25,13 +25,6 @@ int DX12Renderer::initialize(unsigned int _width, unsigned int _height)
 	CreateDepthStencil(_width, _height);
 	SetViewportAndScissorRect(_width, _height);
 	CreateRootSignature();
-
-	// Remove these
-	//CreateShadersAndPipeLineState();
-	//CreateConstantBufferResources();
-	//CreateTriangleData();
-
-	WaitForGPU();
 
 	return 0;
 }
@@ -64,6 +57,8 @@ void DX12Renderer::CreateDepthStencil(unsigned int _width, unsigned int _height)
 		IID_PPV_ARGS(&m_pDepthResource)));
 	;
 
+	m_pDepthResource->SetName(L"DepthStencil");
+
 	m_pDevice4->CreateDepthStencilView(m_pDepthResource.Get(),
 									   &depthStencilDesc,
 									   m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
@@ -77,13 +72,14 @@ void DX12Renderer::CreateDescriptorHeaps()
 	dhd.Type					   = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
 	ThrowIfFailed(m_pDevice4->CreateDescriptorHeap(&dhd, IID_PPV_ARGS(&m_pRenderTargetsHeap)));
-
+	m_pRenderTargetsHeap->SetName(L"RenderTarget heaps");
 	// Depth Stencil heaps
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
 	dsvHeapDesc.NumDescriptors			   = 1;
 	dsvHeapDesc.Type					   = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags					   = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	ThrowIfFailed(m_pDevice4->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_pDSVHeap)));
+	m_pDSVHeap->SetName(L"Depth Stencil Heap");
 
 	// SRV heaps
 	/*
@@ -99,6 +95,7 @@ void DX12Renderer::CreateDescriptorHeaps()
 	heapDescriptorDesc.Flags					  = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	heapDescriptorDesc.Type						  = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	m_pDevice4->CreateDescriptorHeap(&heapDescriptorDesc, IID_PPV_ARGS(&m_pSRVHeap));
+	m_pSRVHeap->SetName(L"SRVHeap");
 }
 
 void DX12Renderer::CreateSDLWindow(unsigned int _width, unsigned int _height)
@@ -131,6 +128,7 @@ void DX12Renderer::present()
 int DX12Renderer::shutdown()
 {
 	SDL_Quit();
+	CloseHandle(m_EventHandle);
 	return 0;
 }
 
@@ -211,7 +209,7 @@ void DX12Renderer::frame()
 			size_t sizeElem = mesh->geometryBuffers[POSITION].sizeElement;
 			size_t index	= (offset / sizeElem) / 3;
 
-			m_pCommandList3->DrawInstanced(numElem, 1, offset, 0);
+			m_pCommandList3->DrawInstanced(numElem, 1, index, 1);
 			//printf("%zu\n", index);
 
 			//for(auto t : mesh->textures)
@@ -315,16 +313,16 @@ void DX12Renderer::ExecuteCommandList()
 void DX12Renderer::CreateDevice()
 {
 	ComPtr<ID3D12Debug> debugController;
-	ComPtr<ID3D12Debug1> debugController1;
 
 	if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 	{
 		debugController->EnableDebugLayer();
 	}
 
-	debugController->QueryInterface(IID_PPV_ARGS(&debugController1));
-	debugController1->SetEnableGPUBasedValidation(true);
-
+	/*ComPtr<IDXGIDebug> debug;
+	DXGIGetDebugInterface(IID_PPV_ARGS(&debug));
+	debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+	*/
 	IDXGIFactory6* factory = nullptr;
 	IDXGIAdapter1* adapter = nullptr;
 
@@ -354,6 +352,8 @@ void DX12Renderer::CreateDevice()
 			hr = D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_pDevice4)));
 
 		SafeRelease(&adapter);
+
+		m_pDevice4->SetName(L"Device");
 	}
 
 	SafeRelease(&factory);
@@ -381,7 +381,7 @@ void DX12Renderer::CreateCommandInterface()
 
 void DX12Renderer::CreateSwapChain(int _width, int _height)
 {
-	IDXGIFactory5* factory = nullptr;
+	ComPtr<IDXGIFactory5> factory;
 	CreateDXGIFactory(IID_PPV_ARGS(&factory));
 
 	//Swap chain incoming
@@ -399,13 +399,13 @@ void DX12Renderer::CreateSwapChain(int _width, int _height)
 	scDesc.AlphaMode			 = DXGI_ALPHA_MODE_UNSPECIFIED;
 	scDesc.Flags				 = 0;
 
-	IDXGISwapChain1* swapChain1 = nullptr;
+	ComPtr<IDXGISwapChain1> swapChain1;
 	ThrowIfFailed(factory->CreateSwapChainForHwnd(
 		m_pCommandQueue.Get(), GetActiveWindow(), &scDesc, nullptr, nullptr, &swapChain1));
 
 	ThrowIfFailed(swapChain1->QueryInterface(IID_PPV_ARGS(&m_pSwapChain4)));
 
-	SafeRelease(&factory);
+
 }
 
 void DX12Renderer::CreateFenceAndEvent()
@@ -529,12 +529,14 @@ void DX12Renderer::CreateRootSignature()
 	rsDesc.NumStaticSamplers = 1;
 	rsDesc.pStaticSamplers   = &sampler;
 
-	ID3DBlob* sBlob = nullptr;
+	ComPtr<ID3DBlob> sBlob;
 	ThrowIfFailed(
 		D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sBlob, nullptr));
 
 	ThrowIfFailed(m_pDevice4->CreateRootSignature(
 		0, sBlob->GetBufferPointer(), sBlob->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature)));
+
+	m_pRootSignature->SetName(L"Root Signature");
 }
 
 void DX12Renderer::WaitForGPU()
@@ -570,38 +572,37 @@ void DX12Renderer::SetResourceTransitionBarrier(ID3D12GraphicsCommandList* comma
 ////////////////////////////////////////////////////
 Material* DX12Renderer::makeMaterial(const std::string& _name)
 {
-	return new MaterialDX12(this);
+	return DBG_NEW MaterialDX12(this);
 }
 
 ////////////////////////////////////////////////////
 Mesh* DX12Renderer::makeMesh()
 {
-	return new MeshDX12();
+	return DBG_NEW MeshDX12();
 }
 
 ////////////////////////////////////////////////////
 VertexBuffer* DX12Renderer::makeVertexBuffer(size_t _size, VertexBuffer::DATA_USAGE _usage)
 {
-	return new VertexBufferDX12(this, _size, _usage);
+	return DBG_NEW VertexBufferDX12(this, _size, _usage);
 }
 
 ////////////////////////////////////////////////////
 Texture2D* DX12Renderer::makeTexture2D()
 {
-	return new Texture2DDX12(this);
+	return DBG_NEW Texture2DDX12(this);
 }
-
 
 ////////////////////////////////////////////////////
 Sampler2D* DX12Renderer::makeSampler2D()
 {
-	return new Sampler2DDX12();
+	return DBG_NEW Sampler2DDX12();
 }
 
 ////////////////////////////////////////////////////
 RenderState* DX12Renderer::makeRenderState()
 {
-	return new RenderStateDX12();
+	return DBG_NEW RenderStateDX12();
 }
 
 ////////////////////////////////////////////////////
@@ -619,11 +620,11 @@ std::string DX12Renderer::getShaderExtension()
 ////////////////////////////////////////////////////
 ConstantBuffer* DX12Renderer::makeConstantBuffer(std::string _name, unsigned int _location)
 {
-	return new ConstantBufferDX12(this, _name, _location);
+	return DBG_NEW ConstantBufferDX12(this, _name, _location);
 }
 
 ////////////////////////////////////////////////////
 Technique* DX12Renderer::makeTechnique(Material* _material, RenderState* _renderState)
 {
-	return new TechniqueDX12(this, _material, _renderState);
+	return DBG_NEW TechniqueDX12(this, _material, _renderState);
 }

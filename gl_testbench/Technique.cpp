@@ -5,6 +5,7 @@
 Technique::~Technique()
 {
 	std::cout << "destroyed technique" << std::endl;
+
 }
 
 void Technique::enable(Renderer* renderer)

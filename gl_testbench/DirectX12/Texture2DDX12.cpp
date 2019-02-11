@@ -38,6 +38,7 @@ int Texture2DDX12::loadFromFile(std::string filename)
 														D3D12_RESOURCE_STATE_COPY_DEST,
 														nullptr,
 														IID_PPV_ARGS(&m_pTextureResource)));
+	m_pTextureResource->SetName(L"Texture resource");
 
 	// Get the size needed for this texture buffer
 	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(m_pTextureResource.Get(), 0, 1);
@@ -51,6 +52,7 @@ int Texture2DDX12::loadFromFile(std::string filename)
 																  D3D12_RESOURCE_STATE_GENERIC_READ,
 																  nullptr,
 																  IID_PPV_ARGS(&m_pTextureUpload)));
+	m_pTextureUpload->SetName(L"Texture upload resource");
 
 	// Now do we copy the data to the heap we created in this scope and then schedule a copy
 	// from this "upload heap" to the real texture 2d?
@@ -60,8 +62,13 @@ int Texture2DDX12::loadFromFile(std::string filename)
 	textureData.RowPitch			   = w * bpp;
 	textureData.SlicePitch			   = textureData.RowPitch * w;
 
-	UpdateSubresources(
-		m_pRender->GetCommandList(), m_pTextureResource.Get(), m_pTextureUpload.Get(), 0, 0, 1, &textureData);
+	UpdateSubresources(m_pRender->GetCommandList(),
+					   m_pTextureResource.Get(),
+					   m_pTextureUpload.Get(),
+					   0,
+					   0,
+					   1,
+					   &textureData);
 
 	CD3DX12_RESOURCE_BARRIER transition(
 		CD3DX12_RESOURCE_BARRIER::Transition(m_pTextureResource.Get(),
@@ -76,22 +83,21 @@ int Texture2DDX12::loadFromFile(std::string filename)
 	srvDesc.ViewDimension					= D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels				= 1;
 
-
 	UINT descriptorSize = m_pRender->GetDevice()->GetDescriptorHandleIncrementSize(
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE handle(
-		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(), 5 /*Heap slot*/, descriptorSize);
+		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(),
+		5 /*Heap slot*/,
+		descriptorSize);
 
-	m_pRender->GetDevice()->CreateShaderResourceView(
-		m_pTextureResource.Get(), &srvDesc, handle);
+	m_pRender->GetDevice()->CreateShaderResourceView(m_pTextureResource.Get(), &srvDesc, handle);
 
 	m_pRender->GetCommandList()->Close();
 
 	m_pRender->ExecuteCommandList();
+
 	stbi_image_free(rgb);
-
-
 }
 
 void Texture2DDX12::bind(unsigned int slot) {}

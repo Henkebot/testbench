@@ -16,6 +16,13 @@
 // other
 #include <string>
 
+#ifdef _DEBUG
+#	define DBG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#else
+#	define new new
+#endif 
+
+
 static const unsigned int NUM_BACK_BUFFERS = 2U;
 
 #pragma region HR Thrower

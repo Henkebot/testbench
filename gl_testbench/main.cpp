@@ -319,6 +319,7 @@ void shutdown()
 		delete t;
 	}
 	renderer->shutdown();
+	delete renderer;
 };
 
 int main(int argc, char* argv[])

@@ -10,7 +10,8 @@ GLuint VertexBufferGL::usageMapping[3] = { GL_STATIC_COPY, GL_DYNAMIC_COPY, GL_D
 */
 VertexBufferGL::VertexBufferGL(size_t size, DATA_USAGE usage) {
 	totalSize = size;
-	GLuint newSSBO = 0;
+	GLuint 
+		newSSBO = 0;
 	glGenBuffers(1, &newSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, newSSBO);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, size, nullptr, usageMapping[usage]);

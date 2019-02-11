@@ -2,4 +2,7 @@
 
 MeshDX12::MeshDX12() {}
 
-MeshDX12::~MeshDX12() {}
+MeshDX12::~MeshDX12()
+{
+	delete txBuffer;
+}

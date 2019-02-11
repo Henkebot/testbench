@@ -27,12 +27,19 @@ TechniqueDX12::TechniqueDX12(Renderer* _renderer, Material* _material, RenderSta
 	gpsd.RasterizerState.FillMode =
 		rs->IsWireframe() ? D3D12_FILL_MODE_WIREFRAME : D3D12_FILL_MODE_SOLID;
 
-	gpsd.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	gpsd.BlendState				  = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	gpsd.DepthStencilState		  = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	gpsd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
+	gpsd.RasterizerState.CullMode	= D3D12_CULL_MODE_NONE;
+	gpsd.BlendState					 = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	gpsd.DepthStencilState			 = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	gpsd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 	ThrowIfFailed(
 		ren->GetDevice()->CreateGraphicsPipelineState(&gpsd, IID_PPV_ARGS(&m_pPipelineState)));
+
+	m_pPipelineState->SetName(L"Pipelinestate");
+}
+
+TechniqueDX12::~TechniqueDX12()
+{
+	delete renderState;
 }
 
 void TechniqueDX12::enable(Renderer* renderer)

@@ -1,7 +1,6 @@
-#include "OpenGL/OpenGLRenderer.h"
-#include "DirectX12/DX12Renderer.h"
 #include "Renderer.h"
-
+#include "DirectX12/DX12Renderer.h"
+#include "OpenGL/OpenGLRenderer.h"
 
 Renderer* Renderer::makeRenderer(BACKEND option)
 {
@@ -12,4 +11,3 @@ Renderer* Renderer::makeRenderer(BACKEND option)
 
 	return nullptr;
 }
-

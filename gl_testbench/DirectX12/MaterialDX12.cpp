@@ -10,7 +10,14 @@ MaterialDX12::MaterialDX12(DX12Renderer* _device)
 	, m_pDevice(_device)
 {}
 
-MaterialDX12::~MaterialDX12() {}
+MaterialDX12::~MaterialDX12() 
+{
+	for (auto& b : constantBuffers)
+	{
+		delete b.second;
+	}
+
+}
 
 ////////////////////////////////////////////////////
 void MaterialDX12::setShader(const std::string& _shaderFileName, ShaderType _type)
@@ -145,7 +152,7 @@ LPCSTR MaterialDX12::_entryPoint(ShaderType _type)
 ////////////////////////////////////////////////////
 void MaterialDX12::addConstantBuffer(std::string name, unsigned int location)
 {
-	constantBuffers[location] = new ConstantBufferDX12(m_pDevice, name, location);
+	constantBuffers[location] = DBG_NEW ConstantBufferDX12(m_pDevice, name, location);
 }
 
 ////////////////////////////////////////////////////

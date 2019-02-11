@@ -158,6 +158,7 @@
     <ClCompile Include="DirectX12\TechniqueDX12.cpp" />
     <ClCompile Include="DirectX12\Texture2DDX12.cpp" />
     <ClCompile Include="DirectX12\VertexBufferDX12.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="OpenGL\ConstantBufferGL.cpp" />
     <ClCompile Include="OpenGL\MaterialGL.cpp" />
     <ClCompile Include="OpenGL\MeshGL.cpp" />
@@ -172,7 +173,6 @@
     <ClCompile Include="Scene.cpp" />
     <ClCompile Include="VertexBuffer.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="Material.cpp" />
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="RenderState.cpp" />

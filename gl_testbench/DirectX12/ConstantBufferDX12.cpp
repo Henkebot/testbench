@@ -65,6 +65,8 @@ void ConstantBufferDX12::_createCBV(const size_t& size)
 		m_pRender->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(), offset, heapSize);
 
 	m_pRender->GetDevice()->CreateConstantBufferView(&cbvDesc, handle);
+
+	m_pConstantBufferResource->SetName(L"ConstantBuffer");
 }
 
 void ConstantBufferDX12::bind(Material* _mat)

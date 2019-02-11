@@ -13,7 +13,7 @@ class DX12Renderer : public Renderer
 {
 public:
 	DX12Renderer()			= default;
-	virtual ~DX12Renderer() = default;
+	~DX12Renderer() = default;
 
 	Material* makeMaterial(const std::string& _name) override;
 	Mesh* makeMesh() override;
